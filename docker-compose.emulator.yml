@@ -16,5 +16,5 @@ services:
     ports:
       - "127.0.0.1:${EMULATOR_WEB_PORT:-6080}:6080"
     environment:
-      EMULATOR_DEVICE: ${EMULATOR_DEVICE:-Samsung Galaxy S10}
+      EMULATOR_DEVICE: "${EMULATOR_DEVICE:-Samsung Galaxy S10}"
       WEB_VNC: "true"
