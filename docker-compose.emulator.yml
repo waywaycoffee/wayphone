@@ -1,0 +1,20 @@
+# 需宿主机存在 /dev/kvm（仅部分含嵌套虚拟化/裸金属 / 自有机房）
+# 见: https://github.com/budtmo/docker-android
+# 使用: docker compose -f docker-compose.emulator.yml up -d
+#
+# 浏览器: http://127.0.0.1:6080 （公网请用 SSH 转发，勿对 0.0.0.0 全开放）
+#
+# 若本机 6080 已被占用，把左侧改成 "127.0.0.1:16080:6080" 后访问 16080
+
+services:
+  docker-android:
+    image: ${DOCKER_ANDROID_IMAGE:-budtmo/docker-android:emulator_11.0}
+    container_name: cloudphone-emulator
+    restart: unless-stopped
+    devices:
+      - /dev/kvm
+    ports:
+      - "127.0.0.1:${EMULATOR_WEB_PORT:-6080}:6080"
+    environment:
+      EMULATOR_DEVICE: ${EMULATOR_DEVICE:-Samsung Galaxy S10}
+      WEB_VNC: "true"

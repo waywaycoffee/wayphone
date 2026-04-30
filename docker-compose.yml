@@ -1,0 +1,25 @@
+# 默认：Redroid（适用于大多数无嵌套 KVM 的 ECS / 云主机）
+# 有 KVM 的可选方案见 docker-compose.emulator.yml
+# 官方文档: https://github.com/remote-android/redroid-doc
+
+services:
+  redroid:
+    image: ${REDROID_IMAGE:-redroid/redroid:13.0.0-64only-latest}
+    container_name: cloudphone-redroid
+    restart: unless-stopped
+    privileged: true
+    # 不对外绑定公网，仅本机，配合 SSH 端口转发访问；若必须公网请改但务必限制来源 IP
+    ports:
+      - "127.0.0.1:${REDROID_HOST_PORT:-5555}:5555"
+    # 5.15+ 内核云机若启动失败，可取消下一行注释或见 redroid-doc
+    # - "androidboot.use_memfd=0"
+    command:
+      - "androidboot.redroid_width=720"
+      - "androidboot.redroid_height=1280"
+      - "androidboot.redroid_dpi=320"
+    networks:
+      - cloudphone
+
+networks:
+  cloudphone:
+    driver: bridge
