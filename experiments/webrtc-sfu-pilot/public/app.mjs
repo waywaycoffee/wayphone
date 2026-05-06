@@ -103,6 +103,9 @@ async function createRecvPipeline() {
       .then(() => callback())
       .catch((e) => errback(e));
   });
+  recvTransport.on('connectionstatechange', () => {
+    log(`RecvTransport 连接状态: ${recvTransport.connectionState}`);
+  });
   log('RecvTransport 已创建');
 }
 
@@ -141,6 +144,9 @@ async function createSendPipeline() {
       .then((r) => callback({ id: r.producerId }))
       .catch((e) => errback(e));
   });
+  sendTransport.on('connectionstatechange', () => {
+    log(`SendTransport 连接状态: ${sendTransport.connectionState}`);
+  });
   log('SendTransport 已创建');
 }
 
@@ -163,6 +169,11 @@ async function consumeIfViewer(producerId) {
   remoteVideo.srcObject = new MediaStream([consumer.track]);
   consumedProducerIds.add(producerId);
   log(`正在播放远端轨 consumer=${consumer.id}`);
+  try {
+    await remoteVideo.play();
+  } catch (e) {
+    log(`远端 video.play 失败: ${e.message}（可试点击页面后再点「仅观看」）`);
+  }
 }
 
 document.getElementById('btnPublish').addEventListener('click', async () => {
