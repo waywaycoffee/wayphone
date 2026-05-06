@@ -171,6 +171,13 @@ document.getElementById('btnPublish').addEventListener('click', async () => {
       log('请先等待 WebSocket 连接');
       return;
     }
+    if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
+      log(
+        '发布失败: 当前页面不是「安全上下文」，浏览器禁用了摄像头 API（常见于用 http://公网IP 打开）。' +
+          ' 解决: ① 在本机执行 SSH 端口转发后只用 http://127.0.0.1:3000 打开页面；② 或为站点配置 HTTPS（域名+证书）。见 docs/webrtc-sfu-pilot.md §3.2。',
+      );
+      return;
+    }
     await createSendPipeline();
     const stream = await navigator.mediaDevices.getUserMedia({
       video: { width: { ideal: 640 }, height: { ideal: 360 } },

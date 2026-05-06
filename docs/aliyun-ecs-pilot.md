@@ -147,7 +147,8 @@ docker compose --project-directory /opt/wayphone/experiments/webrtc-sfu-pilot \
   -f /opt/wayphone/experiments/webrtc-sfu-pilot/docker-compose.yml config
 ```
 
-浏览器（你本机或手机 4G）：`http://EIP:3000/`  
+浏览器（你本机或手机 4G）：`http://EIP:3000/` 可验证页面与信令是否通。  
+**「发布摄像头」需要安全上下文**：多数浏览器在 **`http://公网IP`** 下会禁用 **`navigator.mediaDevices`**，表现为发布失败。PoC 请在本机 **`ssh -L 3000:127.0.0.1:3000 root@EIP`** 后用 **`http://127.0.0.1:3000/`** 打开，或上 **HTTPS**；说明见 **`docs/webrtc-sfu-pilot.md` §3.2**。
 
 - **Tab 1**：「发布摄像头」  
 - **Tab 2**：「仅观看」  

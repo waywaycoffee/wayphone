@@ -20,6 +20,8 @@ npm start
 
 **局域网其它设备**访问时，在服务端进程环境设置 **`MEDIASOUP_ANNOUNCED_IP=<服务器局域网IP>`**，否则 WebRTC 可能无法连通。
 
+用浏览器直接打开 **`http://公网IP:3000`** 时，多数环境**无法「发布摄像头」**（`navigator.mediaDevices` 被禁用）；请用 **`http://127.0.0.1:3000` + SSH 端口转发**，或 **HTTPS**，见 **`docs/webrtc-sfu-pilot.md` §3.2**。
+
 ## Docker（Linux，可选）
 
 ```bash

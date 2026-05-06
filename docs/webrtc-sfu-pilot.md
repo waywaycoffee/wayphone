@@ -63,6 +63,20 @@ node server.cjs
 - **跨机 / 局域网**：在运行 `server.cjs` 的机器上设置 **`MEDIASOUP_ANNOUNCED_IP`** 为「对端浏览器能路由到的 IP」（例如服务器内网 IP），否则 ICE 可能失败。  
 - **非 localhost 的 HTTPS 站点**：浏览器对 `getUserMedia` 有安全上下文要求，需自行配 TLS / 反向代理（本试点未内置）。
 
+### 3.2 摄像头与安全上下文（`navigator.mediaDevices` 为 undefined）
+
+Chrome / Edge / Safari 等要求 **`getUserMedia` 仅在「安全上下文」** 中可用：`https://` 页面，或 **`http://127.0.0.1` / `http://localhost`**（以及少数受信任的本地主机名）。若你用 **`http://47.x.x.x:3000/`** 这类 **纯公网 IP + HTTP** 打开试点页，**`navigator.mediaDevices` 往往为 `undefined`**，点「发布摄像头」会失败——**与 mediasoup 无关**。
+
+**PoC 推荐做法（不配证书）**：在你**个人电脑**上把 ECS 的 3000 转到本机回环，再用 **`http://127.0.0.1:3000`** 打开（此时属于安全上下文，可出摄像头）：
+
+```bash
+ssh -N -L 3000:127.0.0.1:3000 root@你的EIP
+```
+
+保持该终端不关，浏览器打开 **`http://127.0.0.1:3000/`**。`MEDIASOUP_ANNOUNCED_IP` 仍须填 **浏览器访问 SFU 媒体面时实际可达的 IP**（公网 PoC 一般为 **ECS 的 EIP**），否则第二路可能无画面。
+
+**正式环境**：为域名配置 **HTTPS**（例如 Caddy / Nginx + Let’s Encrypt），用 `https://你的域名/` 访问。
+
 一键 smoke（仓库根目录，**自动选空闲端口**；会按需 `npm install` / `build:client`）：
 
 ```bash
@@ -84,6 +98,8 @@ docker compose up --build
 ```
 
 Compose 使用 **`network_mode: host`**（Linux 常见做法，便于 mediasoup UDP）。仅适用于支持 host 网络的 Docker 环境；**与 Mac Docker Desktop 行为不同**，请以 Linux 云主机为准。
+
+用 **`http://公网IP:3000`** 能打开静态页，但**可能无法发布摄像头**：见上文 **§3.2**（需 `127.0.0.1` 经 SSH 转发或 HTTPS）。
 
 **云机安全组、防火墙、`MEDIASOUP_ANNOUNCED_IP` 填法、与 Redroid 并行实验、采购/「并发」话术澄清**：见 **[docs/linux-cloud-lab.md](linux-cloud-lab.md)**（其中 **§7**）。
 
