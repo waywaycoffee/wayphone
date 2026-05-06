@@ -70,7 +70,8 @@ docker compose version
 
 - 若 **`docker compose`** 不存在，可再装插件类包或改用 **`docker-compose`**（以你系统上 `snap list` / 官方 [docker snap](https://snapcraft.io/docker) 说明为准）。  
 - **特权容器 + `network_mode: host`**（本仓库 `webrtc-sfu-pilot` 的 compose 会用到）在个别 Snap/内核组合上可能行为与 APT 版略有差异；若 `docker compose up` 与网络相关报错，可优先换 **§2.1 APT 官方 Docker** 再试。  
-- **`usermod: group 'docker' does not exist'`**：Snap 版 Docker **常常不会创建**系统里的 `docker` 组。**当前用户是 `root` 时可直接忽略**「加入 docker 组」这一步，照常执行 `docker` / `docker compose` 即可。若要用**普通用户**免 `sudo` 跑 Docker，Snap 与 APT 行为不同：可一直使用 `sudo docker …`，或改用 **§2.1 APT 官方安装**（会创建 `docker` 组后再 `usermod`），或查阅当前 Snap 版本文档中的权限说明。
+- **`usermod: group 'docker' does not exist'`**：Snap 版 Docker **常常不会创建**系统里的 `docker` 组。**当前用户是 `root` 时可直接忽略**「加入 docker 组」这一步，照常执行 `docker` / `docker compose` 即可。若要用**普通用户**免 `sudo` 跑 Docker，Snap 与 APT 行为不同：可一直使用 `sudo docker …`，或改用 **§2.1 APT 官方安装**（会创建 `docker` 组后再 `usermod`），或查阅当前 Snap 版本文档中的权限说明。  
+- **路径与沙箱（很重要）**：Snap 严格沙箱下，`docker` / `docker compose` 使用的路径往往**只对 `$HOME` 等少数目录可见**。仓库放在 **`/opt/wayphone`** 时，你在 shell 里 `ls` 能看到 `docker-compose.yml`，但 compose 仍可能报 **`open …/docker-compose.yml: no such file or directory`**——这不是文件丢了，而是 **Docker 进程读不到 `/opt`**。**处理**：把代码放到 **`$HOME/wayphone`**（`root` 一般为 `/root/wayphone`），或改用 **§2.1 APT 官方 Docker**（无此限制）。
 
 ---
 
@@ -87,6 +88,16 @@ cd /opt/wayphone
 ```
 
 私有库请改用 **SSH**（`git@github.com:...`）或在 ECS 上配置 **credential / token**。下文路径 **`/opt/wayphone`** 可按你实际目录替换。
+
+**若你使用 Snap 版 Docker（§2.2）**：为避免 `/opt` 对 Docker 不可见，建议直接把仓库克隆到用户目录，例如：
+
+```bash
+mkdir -p "$HOME"
+git clone https://github.com/waywaycoffee/wayphone.git "$HOME/wayphone"
+cd "$HOME/wayphone"
+```
+
+下文凡写 **`/opt/wayphone`**，在 Snap 场景请自行换成 **`$HOME/wayphone`**（或你已 `git clone` 到的、位于 `$HOME` 下的路径）。
 
 ---
 
@@ -109,7 +120,9 @@ docker compose up --build
 
 **说明**：`docker compose` 必须在**含有 `docker-compose.yml` 的目录**里执行；在 `~` 根目录直接跑会出现 `no configuration file provided: not found`。
 
-**已在 `cd` 到上述目录后仍报 `no configuration file provided`（常见于 Snap 安装的 Docker）**时，改用**绝对路径**或仓库内脚本（二选一）：
+**已在 `cd` 到上述目录后仍报 `no configuration file provided`（常见于 Snap 安装的 Docker）**时，可先试**绝对路径**或仓库内脚本（二选一）；**若 `docker compose … config` 又报 `open …docker-compose.yml: no such file or directory`（而 `ls` 同一路径存在）**，说明是 **Snap 读不到 `/opt`**，不要用绝对路径硬扛——请 **§3** 把仓库放到 **`$HOME/wayphone`**，或改用 **§2.1 APT 官方 Docker**。
+
+在仓库根为 **`/opt/wayphone`**（Snap 用户请改为 **`$HOME/wayphone`**）时：
 
 ```bash
 export MEDIASOUP_ANNOUNCED_IP=EIP
@@ -118,7 +131,7 @@ docker compose --project-directory /opt/wayphone/experiments/webrtc-sfu-pilot \
   -f /opt/wayphone/experiments/webrtc-sfu-pilot/docker-compose.yml up --build
 ```
 
-或（`git pull` 拿到 `docker-up.sh` 之后）：
+或（`git pull` 拿到 `docker-up.sh` 之后；路径同样按上替换）：
 
 ```bash
 chmod +x /opt/wayphone/experiments/webrtc-sfu-pilot/docker-up.sh
@@ -158,7 +171,8 @@ node server.cjs
 | 现象 | 原因与处理 |
 |------|------------|
 | `cd: .../webrtc-sfu-pilot: No such file or directory` | 未克隆仓库或路径不对。执行 **§3** 的 `git clone`，或 `ls /opt` / `find / -maxdepth 4 -name webrtc-sfu-pilot -type d 2>/dev/null` 找到实际目录后再 `cd`。 |
-| `no configuration file provided: not found` | ① 当前目录没有 compose 文件：先 `cd …/webrtc-sfu-pilot`，`ls docker-compose.yml`。② **已 cd 仍有此报错**：多为 **Snap 版 Docker** 未正确识别工程目录，见上文 **绝对路径** / **`docker-up.sh`**。仍失败可改用 **APT 官方 Docker**（`docs/aliyun-ecs-pilot.md` §2.1）。 |
+| `no configuration file provided: not found` | ① 当前目录没有 compose 文件：先 `cd …/webrtc-sfu-pilot`，`ls docker-compose.yml`。② **已 cd 仍有此报错**：多为 **Snap 版 Docker** 未正确识别工程目录，见上文 **绝对路径** / **`docker-up.sh`**。仍失败可改用 **APT 官方 Docker**（§2.1）。 |
+| `open …/docker-compose.yml: no such file or directory`（但同一台机器上 `ls` 该路径存在） | **Snap 版 Docker** 沙箱下守护进程**看不到**仓库所在目录（常见为 **`/opt/...`**）。**绝对路径无法修复**。把仓库放到 **`$HOME/wayphone`** 后再 compose，或改用 **§2.1 APT 官方 Docker**。 |
 
 ---
 

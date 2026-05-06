@@ -34,6 +34,8 @@ bash ./docker-up.sh
 # 或见 docs/aliyun-ecs-pilot.md 中的绝对路径 docker compose 命令
 ```
 
+若 **`docker compose` 报 `open …/docker-compose.yml: no such file or directory`**（而 `ls` 能看到该文件），多为 **Snap 读不到 `/opt` 等目录**；把本仓库放到 **`$HOME/wayphone`** 下再跑 compose，或换 **APT 官方 Docker**（见 `docs/aliyun-ecs-pilot.md` §2.1）。
+
 使用 **host 网络**；需 Linux 且 Docker 支持 `network_mode: host`。
 
 云机安全组、防火墙端口、`MEDIASOUP_ANNOUNCED_IP` 与 Redroid 并行说明：仓库根目录 **[docs/linux-cloud-lab.md](../../docs/linux-cloud-lab.md)**。
