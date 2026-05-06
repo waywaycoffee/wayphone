@@ -34,16 +34,46 @@
 
 ## 2. 登录 ECS 并装 Docker
 
+先装常用工具：
+
 ```bash
 sudo apt-get update
 sudo apt-get install -y ca-certificates curl git
-# Docker 官方安装指引见 https://docs.docker.com/engine/install/ubuntu/
-# 安装完成后确认：
+```
+
+### 2.1 方式一：APT（Docker 官方仓库，与本仓库 README 一致）
+
+安装步骤见 [Docker Engine on Ubuntu](https://docs.docker.com/engine/install/ubuntu/)。装好后执行：
+
+```bash
+docker --version
+docker compose version
+sudo usermod -aG docker "$USER"
+```
+
+**重新登录 SSH** 后当前用户才能无 `sudo` 跑 `docker`（或临时 `newgrp docker`）。
+
+### 2.2 方式二：Snap（`snap install docker`）
+
+若你已用或打算用 **Snap** 安装：
+
+```bash
+sudo snap install docker
+```
+
+然后确认：
+
+```bash
 docker --version
 docker compose version
 ```
 
+- 若 **`docker compose`** 不存在，可再装插件类包或改用 **`docker-compose`**（以你系统上 `snap list` / 官方 [docker snap](https://snapcraft.io/docker) 说明为准）。  
+- **特权容器 + `network_mode: host`**（本仓库 `webrtc-sfu-pilot` 的 compose 会用到）在个别 Snap/内核组合上可能行为与 APT 版略有差异；若 `docker compose up` 与网络相关报错，可优先换 **§2.1 APT 官方 Docker** 再试。  
+- 将用户加入 **docker 组** 的做法与 §2.1 相同：`sudo usermod -aG docker "$USER"` 后重新登录。
+
 ---
+
 
 ## 3. 拉代码
 

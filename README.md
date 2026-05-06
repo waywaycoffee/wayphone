@@ -121,7 +121,7 @@ bash scripts/check-kvm-docker-android.sh
 
 ## 1. Ubuntu 上安装 Docker（与阿里云官方 Ubuntu 镜像一致）
 
-你的 ECS 是 **Ubuntu** 时，建议用 [Docker 官方仓库](https://docs.docker.com/engine/install/ubuntu/) 安装带 **Compose v2** 插件的版本（`docker compose` 子命令）。下面在 **20.04 / 22.04 / 24.04** 上均常用；若某条报错，以官方页为准。
+你的 ECS 是 **Ubuntu** 时，建议用 [Docker 官方仓库](https://docs.docker.com/engine/install/ubuntu/) 安装带 **Compose v2** 插件的版本（`docker compose` 子命令）。下面在 **20.04 / 22.04 / 24.04** 上均常用；若某条报错，以官方页为准。若你使用 **`snap install docker`**，见 **`docs/aliyun-ecs-pilot.md` §2.2**（含 `docker compose` 与 host 网络注意点）。
 
 ```bash
 sudo apt-get update
@@ -222,6 +222,7 @@ ssh -N -L 6080:127.0.0.1:6080 你的用户@ECS公网IP
 ## 本仓库文档索引
 
 - **阿里云 ECS 分步**：`docs/aliyun-ecs-pilot.md`  
+- **x86 本地 Linux（家用/机房，与 ECS 同一套 compose）**：`docs/local-x86-linux.md`  
 - **Redroid / ADB / 掌厅备忘**：`docs/redroid-notes.md`  
 - **WebRTC SFU 试点（mediasoup）**：`docs/webrtc-sfu-pilot.md`  
 - **Linux 云机防火墙与容量口径**：`docs/linux-cloud-lab.md`
