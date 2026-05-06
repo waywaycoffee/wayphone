@@ -109,6 +109,31 @@ docker compose up --build
 
 **说明**：`docker compose` 必须在**含有 `docker-compose.yml` 的目录**里执行；在 `~` 根目录直接跑会出现 `no configuration file provided: not found`。
 
+**已在 `cd` 到上述目录后仍报 `no configuration file provided`（常见于 Snap 安装的 Docker）**时，改用**绝对路径**或仓库内脚本（二选一）：
+
+```bash
+export MEDIASOUP_ANNOUNCED_IP=EIP
+export PORT=3000
+docker compose --project-directory /opt/wayphone/experiments/webrtc-sfu-pilot \
+  -f /opt/wayphone/experiments/webrtc-sfu-pilot/docker-compose.yml up --build
+```
+
+或（`git pull` 拿到 `docker-up.sh` 之后）：
+
+```bash
+chmod +x /opt/wayphone/experiments/webrtc-sfu-pilot/docker-up.sh
+export MEDIASOUP_ANNOUNCED_IP=EIP
+export PORT=3000
+bash /opt/wayphone/experiments/webrtc-sfu-pilot/docker-up.sh
+```
+
+先自检 compose 能否被解析：
+
+```bash
+docker compose --project-directory /opt/wayphone/experiments/webrtc-sfu-pilot \
+  -f /opt/wayphone/experiments/webrtc-sfu-pilot/docker-compose.yml config
+```
+
 浏览器（你本机或手机 4G）：`http://EIP:3000/`  
 
 - **Tab 1**：「发布摄像头」  
@@ -133,7 +158,7 @@ node server.cjs
 | 现象 | 原因与处理 |
 |------|------------|
 | `cd: .../webrtc-sfu-pilot: No such file or directory` | 未克隆仓库或路径不对。执行 **§3** 的 `git clone`，或 `ls /opt` / `find / -maxdepth 4 -name webrtc-sfu-pilot -type d 2>/dev/null` 找到实际目录后再 `cd`。 |
-| `no configuration file provided: not found` | 当前目录没有 compose 文件。先 `cd /opt/wayphone/experiments/webrtc-sfu-pilot`，再 `ls docker-compose.yml` 确认存在后执行 `docker compose up --build`。 |
+| `no configuration file provided: not found` | ① 当前目录没有 compose 文件：先 `cd …/webrtc-sfu-pilot`，`ls docker-compose.yml`。② **已 cd 仍有此报错**：多为 **Snap 版 Docker** 未正确识别工程目录，见上文 **绝对路径** / **`docker-up.sh`**。仍失败可改用 **APT 官方 Docker**（`docs/aliyun-ecs-pilot.md` §2.1）。 |
 
 ---
 

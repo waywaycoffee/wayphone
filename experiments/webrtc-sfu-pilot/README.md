@@ -27,6 +27,13 @@ export MEDIASOUP_ANNOUNCED_IP=192.168.x.x
 docker compose up --build
 ```
 
+若已 `cd` 本目录仍出现 **`no configuration file provided`**（常见于 **Snap** 安装的 Docker），请用：
+
+```bash
+bash ./docker-up.sh
+# 或见 docs/aliyun-ecs-pilot.md 中的绝对路径 docker compose 命令
+```
+
 使用 **host 网络**；需 Linux 且 Docker 支持 `network_mode: host`。
 
 云机安全组、防火墙端口、`MEDIASOUP_ANNOUNCED_IP` 与 Redroid 并行说明：仓库根目录 **[docs/linux-cloud-lab.md](../../docs/linux-cloud-lab.md)**。
