@@ -70,7 +70,7 @@ docker compose version
 
 - 若 **`docker compose`** 不存在，可再装插件类包或改用 **`docker-compose`**（以你系统上 `snap list` / 官方 [docker snap](https://snapcraft.io/docker) 说明为准）。  
 - **特权容器 + `network_mode: host`**（本仓库 `webrtc-sfu-pilot` 的 compose 会用到）在个别 Snap/内核组合上可能行为与 APT 版略有差异；若 `docker compose up` 与网络相关报错，可优先换 **§2.1 APT 官方 Docker** 再试。  
-- 将用户加入 **docker 组** 的做法与 §2.1 相同：`sudo usermod -aG docker "$USER"` 后重新登录。
+- **`usermod: group 'docker' does not exist'`**：Snap 版 Docker **常常不会创建**系统里的 `docker` 组。**当前用户是 `root` 时可直接忽略**「加入 docker 组」这一步，照常执行 `docker` / `docker compose` 即可。若要用**普通用户**免 `sudo` 跑 Docker，Snap 与 APT 行为不同：可一直使用 `sudo docker …`，或改用 **§2.1 APT 官方安装**（会创建 `docker` 组后再 `usermod`），或查阅当前 Snap 版本文档中的权限说明。
 
 ---
 
