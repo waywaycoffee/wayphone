@@ -92,6 +92,12 @@ cd /opt/wayphone
 
 ## 4. 先跑通 A：WebRTC SFU 试点（建议第一步）
 
+**必须先完成 §3**（本机已有 `/opt/wayphone` 且内含 `experiments/webrtc-sfu-pilot/docker-compose.yml`）。若不确定，先执行：
+
+```bash
+test -f /opt/wayphone/experiments/webrtc-sfu-pilot/docker-compose.yml && echo OK || echo "请先 git clone 到 /opt/wayphone（见 §3）"
+```
+
 在 ECS 上（有 EIP 时把下面 `EIP` 换成公网 IP；仅内网访问则换成内网 IP）：
 
 ```bash
@@ -100,6 +106,8 @@ export MEDIASOUP_ANNOUNCED_IP=EIP
 export PORT=3000
 docker compose up --build
 ```
+
+**说明**：`docker compose` 必须在**含有 `docker-compose.yml` 的目录**里执行；在 `~` 根目录直接跑会出现 `no configuration file provided: not found`。
 
 浏览器（你本机或手机 4G）：`http://EIP:3000/`  
 
@@ -119,6 +127,13 @@ export MEDIASOUP_ANNOUNCED_IP=EIP
 export PORT=3000
 node server.cjs
 ```
+
+### 4.1 常见错误
+
+| 现象 | 原因与处理 |
+|------|------------|
+| `cd: .../webrtc-sfu-pilot: No such file or directory` | 未克隆仓库或路径不对。执行 **§3** 的 `git clone`，或 `ls /opt` / `find / -maxdepth 4 -name webrtc-sfu-pilot -type d 2>/dev/null` 找到实际目录后再 `cd`。 |
+| `no configuration file provided: not found` | 当前目录没有 compose 文件。先 `cd /opt/wayphone/experiments/webrtc-sfu-pilot`，再 `ls docker-compose.yml` 确认存在后执行 `docker compose up --build`。 |
 
 ---
 
