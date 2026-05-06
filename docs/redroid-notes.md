@@ -23,6 +23,17 @@ adb devices
 
 根目录 `docker-compose.yml` 默认将 **5555 绑在 `127.0.0.1`**，请勿随意改为对公网 `0.0.0.0` 开放。
 
+## Binder 与容器反复重启（`/dev/binder` No such file）
+
+若 `docker logs` / logcat 出现 **`Binder driver '/dev/binder' could not be opened`**，说明 **容器内看不到 binder 设备**。在 ECS **宿主机**上先确认：
+
+```bash
+sudo modprobe binder_linux devices="binder,hwbinder,vndbinder"
+ls -la /dev/binder /dev/hwbinder /dev/vndbinder
+```
+
+三者在且 compose 里已映射 **`devices: /dev/binder` 等**（见根目录 `docker-compose.yml`）后，再 **`docker compose up -d`**。仅 `privileged: true` 在部分 Docker/内核组合下仍不会自动注入上述节点。
+
 ## 中国移动掌厅（仅备忘，不构成兼容性承诺）
 
 - **包名**：`com.greenpoint.android.mc10086.activity`  

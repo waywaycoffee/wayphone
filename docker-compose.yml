@@ -8,6 +8,11 @@ services:
     container_name: cloudphone-redroid
     restart: unless-stopped
     privileged: true
+    # 宿主需已 modprobe binder_linux；否则容器内 gatekeeperd 等会报 /dev/binder No such file
+    devices:
+      - /dev/binder
+      - /dev/hwbinder
+      - /dev/vndbinder
     # 不对外绑定公网，仅本机，配合 SSH 端口转发访问；若必须公网请改但务必限制来源 IP
     ports:
       - "127.0.0.1:${REDROID_HOST_PORT:-5555}:5555"
