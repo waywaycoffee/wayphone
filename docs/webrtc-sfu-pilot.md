@@ -77,6 +77,8 @@ ssh -N -L 3000:127.0.0.1:3000 root@你的EIP
 
 **SSH 只转发信令（TCP 3000），不转发 RTP**：媒体仍走 **本机浏览器 ↔ ECS 公网 IP 的 UDP**（默认 **40000–49999**）。若 **「发布」有本地画面、「仅观看」黑屏**，优先在阿里云安全组放行 **入方向 UDP 40000–49999**，并确认 **`MEDIASOUP_ANNOUNCED_IP` = 该 EIP**。试点页日志会打印 **`RecvTransport 连接状态:`**（`failed` / `disconnected` 多为网络未通）。
 
+**信令已通、日志显示已 consume 仍黑屏**：mediasoup 建议在服务端 **先 `consume({ paused: true })`，再在浏览器 `recvTransport.consume` 完成后 `consumer.resume()`**。本仓库试点已实现 **`resumeConsumer` RPC**；远端 `<video>` 使用 **`muted`** 以利于自动播放。部署后请 **`docker compose up -d --build`** 再测。
+
 **正式环境**：为域名配置 **HTTPS**（例如 Caddy / Nginx + Let’s Encrypt），用 `https://你的域名/` 访问。
 
 一键 smoke（仓库根目录，**自动选空闲端口**；会按需 `npm install` / `build:client`）：

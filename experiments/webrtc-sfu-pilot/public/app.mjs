@@ -166,6 +166,10 @@ async function consumeIfViewer(producerId) {
     rtpParameters: c.rtpParameters,
     producerPaused: c.producerPaused,
   });
+  await rpc('resumeConsumer', { consumerId: c.id });
+  if (consumer.paused) {
+    consumer.resume();
+  }
   remoteVideo.srcObject = new MediaStream([consumer.track]);
   consumedProducerIds.add(producerId);
   log(`正在播放远端轨 consumer=${consumer.id}`);

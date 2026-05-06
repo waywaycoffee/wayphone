@@ -204,10 +204,11 @@ async function main() {
               replyErr(ws, requestId, 'cannot consume');
               break;
             }
+            // paused: true 再按信令 resume，避免 RTP 早于浏览器 Consumer 就绪（见 mediasoup 文档推荐顺序）
             const consumer = await transport.consume({
               producerId: msg.producerId,
               rtpCapabilities: msg.rtpCapabilities,
-              paused: false,
+              paused: true,
             });
             peer.consumers.set(consumer.id, consumer);
             consumer.on('transportclose', () => {
@@ -223,6 +224,18 @@ async function main() {
                 producerPaused: consumer.producerPaused,
               },
             });
+            break;
+          }
+          case 'resumeConsumer': {
+            const consumer = peer.consumers.get(msg.consumerId);
+            if (!consumer) {
+              replyErr(ws, requestId, 'consumer not found');
+              break;
+            }
+            if (consumer.paused) {
+              await consumer.resume();
+            }
+            reply(ws, requestId, { ok: true });
             break;
           }
           default:
