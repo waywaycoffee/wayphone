@@ -2,7 +2,8 @@
 
 目标：**在阿里云 Linux 上把本仓库里「能客观验证」的两块先跑通**——① WebRTC SFU 试点（Layer B）；②（可选）Redroid 容器。不承诺掌厅业务结果，以实测为准。
 
-更通用的防火墙与「并发」话术澄清：见 **[linux-cloud-lab.md](linux-cloud-lab.md)**（含 **§7**）。
+更通用的防火墙与「并发」话术澄清：见 **[linux-cloud-lab.md](linux-cloud-lab.md)**（含 **§7**）。  
+**同一套代码在 x86 本地 Linux（无云安全组、局域网为主）**：见 **[local-x86-linux.md](local-x86-linux.md)**。
 
 ---
 
@@ -44,15 +45,18 @@ docker compose version
 
 ---
 
-## 3. 拉代码（替换为你的仓库地址）
+## 3. 拉代码
+
+公开仓库示例（与本仓库当前默认远程一致；若你 fork 了请改 URL）：
 
 ```bash
-sudo mkdir -p /opt/cloudPhone
-sudo chown "$USER":"$USER" /opt/cloudPhone
-cd /opt/cloudPhone
-git clone <你的 cloudPhone 仓库 URL> .
-# 若私有库，用 SSH key 或 token，按你团队规范来
+sudo mkdir -p /opt/wayphone
+sudo chown "$USER":"$USER" /opt/wayphone
+git clone https://github.com/waywaycoffee/wayphone.git /opt/wayphone
+cd /opt/wayphone
 ```
+
+私有库请改用 **SSH**（`git@github.com:...`）或在 ECS 上配置 **credential / token**。下文路径 **`/opt/wayphone`** 可按你实际目录替换。
 
 ---
 
@@ -61,7 +65,7 @@ git clone <你的 cloudPhone 仓库 URL> .
 在 ECS 上（有 EIP 时把下面 `EIP` 换成公网 IP；仅内网访问则换成内网 IP）：
 
 ```bash
-cd /opt/cloudPhone/experiments/webrtc-sfu-pilot
+cd /opt/wayphone/experiments/webrtc-sfu-pilot
 export MEDIASOUP_ANNOUNCED_IP=EIP
 export PORT=3000
 docker compose up --build
@@ -78,7 +82,7 @@ docker compose up --build
 
 ```bash
 sudo apt-get install -y python3 build-essential
-cd /opt/cloudPhone/experiments/webrtc-sfu-pilot
+cd /opt/wayphone/experiments/webrtc-sfu-pilot
 npm install
 npm run build:client
 export MEDIASOUP_ANNOUNCED_IP=EIP
@@ -91,7 +95,7 @@ node server.cjs
 ## 5. 再试 B：Redroid（可选，与 SFU 独立）
 
 ```bash
-cd /opt/cloudPhone
+cd /opt/wayphone
 docker compose up -d
 ```
 
@@ -110,11 +114,11 @@ docker compose up -d
 
 ## 7. 自检命令（可选）
 
-在**你本机**（有 `bash`）对 ECS 做最小自动化检查（需已 `git clone` 同一代码；ECS 上 3000 已监听、`MEDIASOUP_ANNOUNCED_IP` 已正确）：
+在 **ECS 上**（推荐；脚本默认访问 `127.0.0.1`）已 `git clone` 且 **3000** 已监听、`MEDIASOUP_ANNOUNCED_IP` 已正确时：
 
 ```bash
-# 在仓库根目录，指向云上已开的端口（若 SSH 隧道则换成本地端口）
+cd /opt/wayphone
 PORT=3000 bash scripts/smoke-webrtc-sfu-pilot.sh
 ```
 
-若 smoke 跑在你本机而服务在云上，应把脚本里的 `127.0.0.1` 改成 **EIP** 或把 smoke 放到 ECS 上执行；当前脚本默认测 **本机** `127.0.0.1`，**在 ECS 内执行**最贴切。
+若在你**个人电脑**上跑 smoke 而服务在云上，需改脚本或改用隧道把本机某端口转到 ECS:3000；否则请始终在 **ECS 内**执行上述命令。
