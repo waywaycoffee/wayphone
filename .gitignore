@@ -3,4 +3,16 @@
 
 # 日志与临时文件
 *.log
+mc10086_log.txt
 .DS_Store
+
+# 体积过大或不宜进仓库的二进制（官方 APK 请在各环境自行下载安装）
+experiments/ws-scrcpy/*.apk
+
+# 本地云应用实验（ws-scrcpy 克隆产物，勿提交依赖与构建输出）
+experiments/ws-scrcpy/node_modules/
+experiments/ws-scrcpy/dist/
+
+# WebRTC SFU 试点（依赖勿提交）
+experiments/webrtc-sfu-pilot/node_modules/
+experiments/webrtc-sfu-pilot/public/mediasoup-client.esm.js

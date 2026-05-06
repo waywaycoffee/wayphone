@@ -1,0 +1,15 @@
+# Linux 建议：host 网络便于 mediasoup UDP；浏览器访问 http://<服务器IP>:3000
+# 用法（本目录）:
+#   MEDIASOUP_ANNOUNCED_IP=192.168.1.10 docker compose up --build
+#
+# MEDIASOUP_ANNOUNCED_IP 填「浏览器能访问到的」本机 IP（公网或局域网），勿留默认 127.0.0.1 给远程看。
+
+services:
+  webrtc-sfu-pilot:
+    build: .
+    network_mode: host
+    environment:
+      PORT: ${PORT:-3000}
+      MEDIASOUP_ANNOUNCED_IP: ${MEDIASOUP_ANNOUNCED_IP:-127.0.0.1}
+      MEDIASOUP_RTC_MIN_PORT: ${MEDIASOUP_RTC_MIN_PORT:-40000}
+      MEDIASOUP_RTC_MAX_PORT: ${MEDIASOUP_RTC_MAX_PORT:-49999}

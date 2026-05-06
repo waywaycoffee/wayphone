@@ -1,0 +1,22 @@
+{
+  "name": "webrtc-sfu-pilot",
+  "private": true,
+  "description": "mediasoup SFU pilot: Layer A+B (signaling + browser produce/consume)",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node server.cjs",
+    "build:client": "esbuild client/entry.mjs --bundle --format=esm --outfile=public/mediasoup-client.esm.js --platform=browser"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "mediasoup": "^3.19.0",
+    "mediasoup-client": "^3.7.17",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0"
+  }
+}

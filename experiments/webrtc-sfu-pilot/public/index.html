@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>WebRTC SFU 试点 — Layer B</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 56rem; margin: 0 auto; padding: 1rem; background: #0f1115; color: #e6e6e6; line-height: 1.45; }
+    h1 { font-size: 1.15rem; font-weight: 600; }
+    p.note { color: #9ca3af; font-size: 0.9rem; }
+    .row { display: flex; flex-wrap: wrap; gap: 0.75rem; margin: 0.75rem 0; }
+    button {
+      padding: 0.45rem 0.85rem; border-radius: 6px; border: 1px solid #374151;
+      background: #1f2937; color: #f9fafb; cursor: pointer; font-size: 0.9rem;
+    }
+    button:hover { background: #374151; }
+    .videos { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-top: 0.75rem; }
+    @media (max-width: 640px) { .videos { grid-template-columns: 1fr; } }
+    video { width: 100%; max-height: 280px; background: #111827; border-radius: 8px; object-fit: contain; }
+    #log {
+      margin-top: 0.75rem; min-height: 8rem; max-height: 14rem; overflow: auto;
+      background: #020617; color: #86efac; padding: 0.6rem 0.75rem; border-radius: 8px;
+      font-size: 0.78rem; white-space: pre-wrap;
+    }
+    code { background: #1f2937; padding: 0.1em 0.35em; border-radius: 4px; font-size: 0.85em; }
+  </style>
+</head>
+<body>
+  <h1>WebRTC SFU 试点（Layer B：信令 + mediasoup-client）</h1>
+  <p class="note">
+    本页通过 WebSocket 与 mediasoup 完成 <strong>摄像头 → SFU → 另一浏览器 Tab</strong> 的最小闭环。
+    不包含 Redroid / 安卓采集（Layer C）。需先执行 <code>npm install</code> 与 <code>npm run build:client</code> 生成
+    <code>public/mediasoup-client.esm.js</code>。局域网访问时请在服务端设置 <code>MEDIASOUP_ANNOUNCED_IP</code>。
+  </p>
+  <div class="row">
+    <button type="button" id="btnPublish">发布摄像头（连接 SFU）</button>
+    <button type="button" id="btnWatch">仅观看（订阅已存在的发布）</button>
+  </div>
+  <div class="videos">
+    <div>
+      <div class="note">本地预览（发布端）</div>
+      <video id="localVideo" autoplay playsinline muted></video>
+    </div>
+    <div>
+      <div class="note">远端（SFU 转发）</div>
+      <video id="remoteVideo" autoplay playsinline></video>
+    </div>
+  </div>
+  <div id="log"></div>
+  <script type="module" src="/app.mjs"></script>
+</body>
+</html>
