@@ -152,6 +152,8 @@ docker compose --project-directory /opt/wayphone/experiments/webrtc-sfu-pilot \
 - **Tab 1**：「发布摄像头」  
 - **Tab 2**：「仅观看」  
 
+**外网浏览器打不开（连接超时 / 无法访问）**：先在 **ECS 上**执行 `curl -sI http://127.0.0.1:3000`（或 `curl -sI http://127.0.0.1:${PORT:-3000}`）。若 **本机通、外网不通**，依次查：① **安全组入方向 TCP 3000** 是否对 `0.0.0.0/0` 或你的办公网 IP 放行；② 该实例是否已绑定你正在访问的 **EIP**；③ 系统 **`ufw status`** / **firewalld** 是否拦截（见 [linux-cloud-lab.md §2](linux-cloud-lab.md)）。
+
 若只有信令没有画面：多半是 **`MEDIASOUP_ANNOUNCED_IP` 与 EIP 不一致** 或 **UDP 段未放行**，见 `docs/webrtc-sfu-pilot.md` 与 `linux-cloud-lab.md` §5。
 
 **无 Docker 时用 Node**（需 `python3`、`build-essential` 以便编 mediasoup）：
@@ -173,6 +175,7 @@ node server.cjs
 | `cd: .../webrtc-sfu-pilot: No such file or directory` | 未克隆仓库或路径不对。执行 **§3** 的 `git clone`，或 `ls /opt` / `find / -maxdepth 4 -name webrtc-sfu-pilot -type d 2>/dev/null` 找到实际目录后再 `cd`。 |
 | `no configuration file provided: not found` | ① 当前目录没有 compose 文件：先 `cd …/webrtc-sfu-pilot`，`ls docker-compose.yml`。② **已 cd 仍有此报错**：多为 **Snap 版 Docker** 未正确识别工程目录，见上文 **绝对路径** / **`docker-up.sh`**。仍失败可改用 **APT 官方 Docker**（§2.1）。 |
 | `open …/docker-compose.yml: no such file or directory`（但同一台机器上 `ls` 该路径存在） | **Snap 版 Docker** 沙箱下守护进程**看不到**仓库所在目录（常见为 **`/opt/...`**）。**绝对路径无法修复**。把仓库放到 **`$HOME/wayphone`** 后再 compose，或改用 **§2.1 APT 官方 Docker**。 |
+| 浏览器打不开 `http://EIP:3000` | **ECS 上** `curl -sI http://127.0.0.1:3000` 若 **200/304**：服务在跑，问题在 **云安全组 / 本机防火墙 / EIP 是否绑在这台实例**。若 **curl 也失败**：容器未起或 `PORT` 不一致，看 `docker compose` 日志。 |
 
 ---
 

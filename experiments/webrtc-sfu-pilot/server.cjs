@@ -7,6 +7,8 @@ const WebSocket = require('ws');
 const mediasoup = require('mediasoup');
 
 const PORT = Number(process.env.PORT || 3000);
+/** 0.0.0.0 = all IPv4 interfaces (explicit; avoids confusion with logs / some host setups). */
+const HTTP_LISTEN_HOST = process.env.HTTP_LISTEN_HOST || '0.0.0.0';
 const RTC_MIN_PORT = Number(process.env.MEDIASOUP_RTC_MIN_PORT || 40000);
 const RTC_MAX_PORT = Number(process.env.MEDIASOUP_RTC_MAX_PORT || 49999);
 
@@ -250,13 +252,16 @@ async function main() {
     });
   });
 
-  httpServer.listen(PORT, () => {
+  httpServer.listen(PORT, HTTP_LISTEN_HOST, () => {
     console.log('mediasoup Worker + Router OK');
     console.log('  worker.pid:', worker.pid);
     console.log('  router.id:', router.id);
     console.log('  rtc ports:', RTC_MIN_PORT, '-', RTC_MAX_PORT);
     console.log('  listen IPs:', JSON.stringify(listenIpConfig()));
-    console.log('HTTP + WebSocket:', `http://127.0.0.1:${PORT}/`);
+    console.log('HTTP + WebSocket bind:', `${HTTP_LISTEN_HOST}:${PORT}`);
+    const ann = process.env.MEDIASOUP_ANNOUNCED_IP;
+    if (ann) console.log('  Remote browser URL:', `http://${ann}:${PORT}/`);
+    else console.log('  Remote browser URL: set MEDIASOUP_ANNOUNCED_IP (e.g. EIP) for WebRTC + bookmark');
     console.log('Layer B: open two tabs — Tab1「发布摄像头」, Tab2「仅观看」.');
     console.log('Press Ctrl+C to exit.');
   });
