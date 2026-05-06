@@ -1,6 +1,6 @@
 # Linux 云机实验指南
 
-在 **Linux 云主机（ECS / VPS）** 上跑本仓库实验，比在 Mac Docker Desktop 上更接近 **Redroid + mediasoup** 的真实部署形态。本文只列**可操作清单**；Redroid 细节仍以根目录 `README.md`、`docker-compose.yml` 与 `docs/cloud-app-runbook.md` 为准。
+在 **Linux 云主机（ECS / VPS）** 上跑本仓库实验，比在 Mac Docker Desktop 上更接近 **Redroid + mediasoup** 的真实部署形态。本文只列**可操作清单**；Redroid 与 ADB 隧道见根目录 **`README.md`**、`docker-compose.yml` 与 **`docs/redroid-notes.md`**。
 
 **阿里云 ECS 分步清单（先跑通再扩展）**：见 **[aliyun-ecs-pilot.md](aliyun-ecs-pilot.md)**。
 
@@ -21,7 +21,7 @@
 | 入站 | UDP | `MEDIASOUP_RTC_MIN_PORT`–`MEDIASOUP_RTC_MAX_PORT`（默认 **40000–49999**） | mediasoup WebRTC 媒体面 |
 
 - 若暂时只想收窄 UDP 范围，可在启动前设置 **`MEDIASOUP_RTC_MIN_PORT` / `MEDIASOUP_RTC_MAX_PORT`**（与云厂商安全组一致）。  
-- **Redroid**：根目录 `docker-compose.yml` 默认把 **5555 绑在 `127.0.0.1`**，不直接对公网；ADB 通常走 **SSH 端口转发**（见 `docs/cloud-app-runbook.md`）。若你自行改成 `0.0.0.0:5555`，须单独评估安全风险。
+- **Redroid**：根目录 `docker-compose.yml` 默认把 **5555 绑在 `127.0.0.1`**，不直接对公网；ADB 通常走 **SSH 端口转发**（见 `docs/redroid-notes.md`）。若你自行改成 `0.0.0.0:5555`，须单独评估安全风险。
 
 **ufw 示例**（端口与策略请按环境修改）：
 
@@ -66,7 +66,7 @@ docker compose up --build
 ```bash
 # 仓库根目录
 docker compose up -d
-# ADB 经 SSH 转发等，见 docs/cloud-app-runbook.md
+# ADB 经 SSH 转发等，见 docs/redroid-notes.md
 ```
 
 ## 5. `MEDIASOUP_ANNOUNCED_IP` 怎么填

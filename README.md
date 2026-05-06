@@ -219,6 +219,13 @@ ssh -N -L 6080:127.0.0.1:6080 你的用户@ECS公网IP
 - **Redroid 起不来、内核 5.15+**：可查阅 [redroid-doc](https://github.com/remote-android/redroid-doc) 中关于 `use_memfd` 等说明，或换用镜像标签。  
 - **docker-android 闪退**：多半是 **无 KVM 或厂商未开放嵌套虚拟化**，回退到 Redroid 作为主线即可。
 
+## 本仓库文档索引
+
+- **阿里云 ECS 分步**：`docs/aliyun-ecs-pilot.md`  
+- **Redroid / ADB / 掌厅备忘**：`docs/redroid-notes.md`  
+- **WebRTC SFU 试点（mediasoup）**：`docs/webrtc-sfu-pilot.md`  
+- **Linux 云机防火墙与容量口径**：`docs/linux-cloud-lab.md`
+
 ## 参考链接
 
 - [Redroid 文档](https://github.com/remote-android/redroid-doc)  

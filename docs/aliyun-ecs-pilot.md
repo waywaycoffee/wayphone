@@ -95,7 +95,7 @@ cd /opt/cloudPhone
 docker compose up -d
 ```
 
-根目录 `docker-compose.yml` 默认 **ADB 5555 只绑 `127.0.0.1`**，不直接暴露公网。从本机连上云安卓，一般用 **SSH 端口转发**，步骤见 **`docs/cloud-app-runbook.md`**（与 ws-scrcpy 实验同一条运维思路）。
+根目录 `docker-compose.yml` 默认 **ADB 5555 只绑 `127.0.0.1`**，不直接暴露公网。从本机连上云安卓用 **SSH 端口转发**：见 **`scripts/remote-adb-tunnel.sh`** 与 **`docs/redroid-notes.md`**。
 
 **说明**：当前仓库 **未** 把 Redroid 画面自动接入 mediasoup（Layer C 另做）；你在阿里云上「跑通」到 **ADB 能装 App / 能起容器** 即可算环境就绪。
 

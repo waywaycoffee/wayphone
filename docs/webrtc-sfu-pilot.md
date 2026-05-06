@@ -1,6 +1,6 @@
 # WebRTC + SFU（MediaSoup）实验路线说明
 
-本文档对应「从 ws-scrcpy 换为 WebRTC + SFU」的**可落地**版本：纠正常见误导、说明 Mac / Linux 差异，并指向仓库内**最小可运行验证**。
+本文档对应 **WebRTC + SFU（mediasoup）** 的**可落地**试点：纠正常见误导、说明 Mac / Linux 差异，并指向仓库内 **Layer A/B** 验证步骤。
 
 ## 1. 你看到的教程里哪些是错的或不可直接照抄
 
@@ -48,7 +48,7 @@
 3. **Layer C（安卓画面 → WebRTC）**  
    - 这是工作量最大的一层：在 **Linux + Redroid** 或 **AVD/真机** 上，用 **GStreamer / 定制 native / 或商业方案** 把编码后的轨送进 SFU；**触控回注**还要走 `adb`/minicap 同类通道或应用内协议，与纯 WebRTC 不是同一行命令能搞定。  
 
-当前仓库的 **ws-scrcpy 实验** 仍适合「先看到画面、调 10086」；**WebRTC 路线**适合作为中长期架构验证，与 Layer C 并行规划。
+**WebRTC 路线**用于验证 SFU 与浏览器媒体面；与 **Redroid 云安卓**（根目录 compose）并行规划；**Layer C**（安卓画面进 SFU）仍待单独设计。
 
 ## 3. 在本仓库里怎么跑 Layer A + B
 
@@ -89,8 +89,8 @@ Compose 使用 **`network_mode: host`**（Linux 常见做法，便于 mediasoup 
 
 ## 4. 与现有云机文档的关系
 
-- **Redroid / 云机部署**：仍以根目录 `README.md`、`docker-compose.yml` 与 `docs/cloud-app-runbook.md` 为准（**Linux**）。  
-- **掌厅 / adb / 深链**：`scripts/cloud-10086.sh`、`docs/ws-scrcpy-10086-integration.md`。  
+- **Redroid / 云机部署**：以根目录 `README.md`、`docker-compose.yml` 与 **`docs/redroid-notes.md`** 为准（**Linux**）。  
+- **掌厅 / adb**：官方 APK + `adb`；包名与深链备忘见 **`docs/redroid-notes.md`**。  
 - **WebRTC SFU**：以本文档 + `experiments/webrtc-sfu-pilot` 为起点；**Layer B** 信令与浏览器示例已在试点目录内，**Layer C**（安卓画面进 SFU）仍待单独设计。
 
 ## 5. 推荐阅读顺序
