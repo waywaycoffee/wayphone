@@ -73,6 +73,39 @@ docker compose version
 - **`usermod: group 'docker' does not exist'`**：Snap 版 Docker **常常不会创建**系统里的 `docker` 组。**当前用户是 `root` 时可直接忽略**「加入 docker 组」这一步，照常执行 `docker` / `docker compose` 即可。若要用**普通用户**免 `sudo` 跑 Docker，Snap 与 APT 行为不同：可一直使用 `sudo docker …`，或改用 **§2.1 APT 官方安装**（会创建 `docker` 组后再 `usermod`），或查阅当前 Snap 版本文档中的权限说明。  
 - **路径与沙箱（很重要）**：Snap 严格沙箱下，`docker` / `docker compose` 使用的路径往往**只对 `$HOME` 等少数目录可见**。仓库放在 **`/opt/wayphone`** 时，你在 shell 里 `ls` 能看到 `docker-compose.yml`，但 compose 仍可能报 **`open …/docker-compose.yml: no such file or directory`**——这不是文件丢了，而是 **Docker 进程读不到 `/opt`**。**处理**：把代码放到 **`$HOME/wayphone`**（`root` 一般为 `/root/wayphone`），或改用 **§2.1 APT 官方 Docker**（无此限制）。
 
+### 2.3 从 Snap Docker 迁到 APT 官方 Docker（`docker ps` 卡死、无 `docker.service` 时）
+
+**说明**：卸 Snap 会丢掉 **Snap 管的那套 Docker 数据**（镜像/容器层在 snap 目录下）；若仍能通过 **`docker ps`** 导出镜像再迁，可先 `docker save`；**已卡死无法执行 docker** 时只能接受重建镜像与容器。正式迁移前可在控制台 **创建快照**。
+
+在 ECS 上 **整段按顺序执行**（与 [Docker Engine on Ubuntu](https://docs.docker.com/engine/install/ubuntu/) 一致；`root` 可省略部分 `sudo`）：
+
+```bash
+# 1) 停掉并移除 Snap Docker（若提示 in use，可先 reboot 再来这两行）
+sudo snap stop docker
+sudo snap remove docker
+
+# 2) 卸 Ubuntu 自带的旧 docker.io（若有），避免冲突
+sudo apt-get remove -y docker.io docker-doc docker-compose docker-compose-v2 podman-docker containerd runc 2>/dev/null || true
+
+# 3) 安装 Docker 官方仓库与 Engine + Compose 插件
+sudo apt-get update
+sudo apt-get install -y ca-certificates curl
+sudo install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+sudo chmod a+r /etc/apt/keyrings/docker.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "${VERSION_CODENAME}") stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+sudo apt-get update
+sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+# 4) 启用并自检
+sudo systemctl enable --now docker
+sudo systemctl status docker --no-pager
+timeout 15 docker ps
+docker compose version
+```
+
+成功后请回到 **`/root/wayphone`**（或你的 compose 目录）重新 **`docker compose up -d`** 拉起 **Redroid / webrtc-sfu-pilot**。若 **`VERSION_CODENAME`** 与 Docker 仓库不兼容（少见），以 [官方文档](https://docs.docker.com/engine/install/ubuntu/) 的 **「Install using the convenience script」或发行版对照表** 为准。
+
 ---
 
 
