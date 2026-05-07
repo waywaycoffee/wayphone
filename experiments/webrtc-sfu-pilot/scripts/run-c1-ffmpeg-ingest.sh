@@ -79,5 +79,7 @@ elif [[ "${USE_LOOPBACK}" == "1" ]] && [[ "${HOST}" != "127.0.0.1" ]]; then
 fi
 
 echo "解析到 RTP 目标: ${HOST}:${PORT}（脚本: ${SCRIPT_BASENAME}）"
+LP=${MEDIASOUP_INGEST_FFMPEG_LOCAL_PORT:-35500}
+echo "提示: FFmpeg 固定源端口=${LP}（与容器 MEDIASOUP_INGEST_FFMPEG_LOCAL_PORT 一致；改了 compose 请 export 同名变量）" >&2
 chmod +x "${REPO_DIR}/scripts/ffmpeg-ingest-h264.sh" "${REPO_DIR}/scripts/ffmpeg-ingest-vp8.sh"
 exec bash "${REPO_DIR}/scripts/${SCRIPT_BASENAME}" "${HOST}" "${PORT}"

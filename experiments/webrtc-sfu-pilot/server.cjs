@@ -12,7 +12,7 @@ const HTTP_LISTEN_HOST = process.env.HTTP_LISTEN_HOST || '0.0.0.0';
 const RTC_MIN_PORT = Number(process.env.MEDIASOUP_RTC_MIN_PORT || 40000);
 const RTC_MAX_PORT = Number(process.env.MEDIASOUP_RTC_MAX_PORT || 49999);
 /** 与前端/镜像一致；`curl http://<EIP>:3000/__pilot_version` 可验证是否已部署新镜像（与浏览器缓存无关） */
-const PILOT_VERSION = process.env.PILOT_VERSION || 'pilot-20260207e';
+const PILOT_VERSION = process.env.PILOT_VERSION || 'pilot-20260207f';
 
 function listenIpConfig() {
   const announcedIp = process.env.MEDIASOUP_ANNOUNCED_IP;
@@ -73,17 +73,27 @@ async function setupPlainIngest({ router, peers, ingestCtx, broadcastFn }) {
   const RTP_SSRC = Number(process.env.MEDIASOUP_INGEST_SSRC || 111222333);
   const ingestCodec = (process.env.MEDIASOUP_INGEST_CODEC || 'h264').toLowerCase();
   const useVp8 = ingestCodec === 'vp8';
+  /** FFmpeg 发送端绑定端口（须与 scripts/ffmpeg-ingest-*.sh 的 -localport 一致）；勿落在 MEDIASOUP_RTC_* 范围内以免撞 WebRTC 端口池 */
+  const ffmpegSrcPort = Number(process.env.MEDIASOUP_INGEST_FFMPEG_LOCAL_PORT || 35500);
+  const ffmpegSrcIp = process.env.MEDIASOUP_INGEST_FFMPEG_IP || '127.0.0.1';
 
   const li = plainTransportListenInfo();
   const plainTransport = await router.createPlainTransport({
     listenInfo: li,
     rtcpMux: true,
-    // FFmpeg 等推流端使用临时源端口；comedia:false 且未 connect() 时入站 RTP 会被丢弃（tcpdump 仍可见 UDP，getStats 却 []）
-    comedia: true,
+    // comedia 在部分环境下无法稳定学习 FFmpeg 临时源端口；改为显式 connect(FFmpeg 固定 localport)
+    comedia: false,
   });
 
   ingestCtx.plainTransport = plainTransport;
   console.log('Layer C1 PlainTransport listenInfo:', JSON.stringify(li));
+  await plainTransport.connect({
+    ip: ffmpegSrcIp,
+    port: ffmpegSrcPort,
+  });
+  console.log(
+    `Layer C1 PlainTransport connect: 远端 RTP 源=${ffmpegSrcIp}:${ffmpegSrcPort}（FFmpeg 必须 -localport ${ffmpegSrcPort}，env MEDIASOUP_INGEST_FFMPEG_LOCAL_PORT）`,
+  );
 
   const videoCodec = useVp8
     ? {
@@ -144,10 +154,10 @@ async function setupPlainIngest({ router, peers, ingestCtx, broadcastFn }) {
   );
   console.log('mediasoup RTP tuple:', `${lip}:${ffmpegPort}`);
   console.log(
-    `同机 ingest（推荐）: bash scripts/${ffmpegScript} 127.0.0.1 ${ffmpegPort}  # 避免 FFmpeg→本机 EIP 的 UDP hairpin 丢包`,
+    `同机 ingest（推荐）: MEDIASOUP_INGEST_FFMPEG_LOCAL_PORT=${ffmpegSrcPort} bash scripts/${ffmpegScript} 127.0.0.1 ${ffmpegPort}`,
   );
   console.log(
-    `跨机 / 已确认 hairpin 可用: bash scripts/${ffmpegScript} ${ffmpegHost} ${ffmpegPort}`,
+    `跨机: 设置 MEDIASOUP_INGEST_FFMPEG_IP=<推流机地址> 且两端 LOCAL_PORT 一致；bash scripts/${ffmpegScript} ${ffmpegHost} ${ffmpegPort}`,
   );
   if (useVp8) {
     console.warn(
@@ -411,7 +421,7 @@ async function main() {
                   .then((stats) => {
                     if (!Array.isArray(stats) || stats.length === 0) {
                       console.warn(
-                        `Layer C1 ingest producer getStats (${phase}): [] — SFU 仍未统计到 RTP。请确认：① 端口与 FFmpeg 一致 ② 同机 127.0.0.1 ③ tcpdump -i lo 有包。若 tcpdump 有包仍为空：查 PlainTransport comedia / connect()（FFmpeg 源端口为临时端口时需 comedia:true）`,
+                        `Layer C1 ingest producer getStats (${phase}): [] — SFU 仍未统计到 RTP。请确认：① 目的端口=日志 mediasoup RTP tuple ② FFmpeg 使用固定 -localport（与 MEDIASOUP_INGEST_FFMPEG_LOCAL_PORT / connect 一致）③ tcpdump -i lo 有包`,
                       );
                       return;
                     }
