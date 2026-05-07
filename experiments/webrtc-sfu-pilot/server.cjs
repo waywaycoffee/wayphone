@@ -12,7 +12,7 @@ const HTTP_LISTEN_HOST = process.env.HTTP_LISTEN_HOST || '0.0.0.0';
 const RTC_MIN_PORT = Number(process.env.MEDIASOUP_RTC_MIN_PORT || 40000);
 const RTC_MAX_PORT = Number(process.env.MEDIASOUP_RTC_MAX_PORT || 49999);
 /** 与前端/镜像一致；`curl http://<EIP>:3000/__pilot_version` 可验证是否已部署新镜像（与浏览器缓存无关） */
-const PILOT_VERSION = process.env.PILOT_VERSION || 'pilot-20260207k';
+const PILOT_VERSION = process.env.PILOT_VERSION || 'pilot-20260207l';
 
 function listenIpConfig() {
   const announcedIp = process.env.MEDIASOUP_ANNOUNCED_IP;
@@ -439,12 +439,14 @@ async function main() {
               consumer.producerId === ingestCtx.producer.id
             ) {
               const logIngestStats = async (phase) => {
+                let rtpRx = 0;
                 try {
                   const pt = ingestCtx.plainTransport;
                   if (pt && !pt.closed) {
                     const ts = await pt.getStats();
                     const t = ts[0];
                     if (t) {
+                      rtpRx = Number(t.rtpBytesReceived) || 0;
                       console.log(
                         `Layer C1 PlainTransport stats (${phase}): rtpBytesReceived=${t.rtpBytesReceived} bytesReceived=${t.bytesReceived} remote=${t.tuple?.remoteIp}:${t.tuple?.remotePort}`,
                       );
@@ -456,8 +458,12 @@ async function main() {
                 try {
                   const stats = await ingestCtx.producer.getStats();
                   if (!Array.isArray(stats) || stats.length === 0) {
+                    const hint =
+                      rtpRx > 0
+                        ? 'PlainTransport 已计 RTP 字节但 producer 仍无 inbound-rtp：多为映射/统计延迟，或对端 PT 与 Producer 不一致'
+                        : 'PlainTransport rtpBytesReceived=0：UDP(bytesReceived)可能为非 RTP 或载荷未被识别为当前 ingest（换 MEDIASOUP_INGEST_CODEC、核对 ingest PT、tcpdump RTP 头）';
                     console.warn(
-                      `Layer C1 ingest producer getStats (${phase}): [] — rtpBytesReceived>0 仍空：查 PT/SSRC；两者皆 0：tcpdump 目的 RTP 端口、源端口是否与 PLAIN_CONNECT 模式一致（默认 comedia 首包学源口）`,
+                      `Layer C1 ingest producer getStats (${phase}): [] — ${hint}`,
                     );
                     return;
                   }
