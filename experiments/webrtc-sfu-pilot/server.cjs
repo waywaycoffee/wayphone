@@ -70,13 +70,15 @@ async function setupPlainIngest({ router, peers, ingestCtx, broadcastFn }) {
   const RTP_PAYLOAD_TYPE = Number(process.env.MEDIASOUP_INGEST_PT || 96);
   const RTP_SSRC = Number(process.env.MEDIASOUP_INGEST_SSRC || 111222333);
 
+  const li = plainTransportListenInfo();
   const plainTransport = await router.createPlainTransport({
-    listenInfo: plainTransportListenInfo(),
+    listenInfo: li,
     rtcpMux: true,
     comedia: false,
   });
 
   ingestCtx.plainTransport = plainTransport;
+  console.log('Layer C1 PlainTransport listenInfo:', JSON.stringify(li));
 
   const producer = await plainTransport.produce({
     kind: 'video',
@@ -385,7 +387,10 @@ async function main() {
     console.log('  worker.pid:', worker.pid);
     console.log('  router.id:', router.id);
     console.log('  rtc ports:', RTC_MIN_PORT, '-', RTC_MAX_PORT);
-    console.log('  listen IPs:', JSON.stringify(listenIpConfig()));
+    console.log(
+      '  WebRtcTransport listenIps (browser only):',
+      JSON.stringify(listenIpConfig()),
+    );
     console.log('HTTP + WebSocket bind:', `${HTTP_LISTEN_HOST}:${PORT}`);
     const ann = process.env.MEDIASOUP_ANNOUNCED_IP;
     if (ann) console.log('  Remote browser URL:', `http://${ann}:${PORT}/`);
