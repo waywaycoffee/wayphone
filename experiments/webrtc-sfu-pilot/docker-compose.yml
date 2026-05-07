@@ -16,7 +16,7 @@ services:
         NODE_IMAGE: ${NODE_IMAGE:-node:20-bookworm}
     network_mode: host
     environment:
-      PILOT_VERSION: ${PILOT_VERSION:-pilot-20260207d}
+      PILOT_VERSION: ${PILOT_VERSION:-pilot-20260207e}
       PORT: ${PORT:-3000}
       MEDIASOUP_ANNOUNCED_IP: ${MEDIASOUP_ANNOUNCED_IP:-127.0.0.1}
       MEDIASOUP_RTC_MIN_PORT: ${MEDIASOUP_RTC_MIN_PORT:-40000}

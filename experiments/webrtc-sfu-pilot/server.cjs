@@ -12,7 +12,7 @@ const HTTP_LISTEN_HOST = process.env.HTTP_LISTEN_HOST || '0.0.0.0';
 const RTC_MIN_PORT = Number(process.env.MEDIASOUP_RTC_MIN_PORT || 40000);
 const RTC_MAX_PORT = Number(process.env.MEDIASOUP_RTC_MAX_PORT || 49999);
 /** 与前端/镜像一致；`curl http://<EIP>:3000/__pilot_version` 可验证是否已部署新镜像（与浏览器缓存无关） */
-const PILOT_VERSION = process.env.PILOT_VERSION || 'pilot-20260207d';
+const PILOT_VERSION = process.env.PILOT_VERSION || 'pilot-20260207e';
 
 function listenIpConfig() {
   const announcedIp = process.env.MEDIASOUP_ANNOUNCED_IP;
@@ -78,7 +78,8 @@ async function setupPlainIngest({ router, peers, ingestCtx, broadcastFn }) {
   const plainTransport = await router.createPlainTransport({
     listenInfo: li,
     rtcpMux: true,
-    comedia: false,
+    // FFmpeg 等推流端使用临时源端口；comedia:false 且未 connect() 时入站 RTP 会被丢弃（tcpdump 仍可见 UDP，getStats 却 []）
+    comedia: true,
   });
 
   ingestCtx.plainTransport = plainTransport;
@@ -410,7 +411,7 @@ async function main() {
                   .then((stats) => {
                     if (!Array.isArray(stats) || stats.length === 0) {
                       console.warn(
-                        `Layer C1 ingest producer getStats (${phase}): [] — SFU 仍未统计到 RTP。请确认：① 容器启动后日志里的 RTP 端口与 FFmpeg 一致 ② 同机用 127.0.0.1:端口 ③ 宿主机 sudo tcpdump -i lo -n udp port <端口> -c 3 有包`,
+                        `Layer C1 ingest producer getStats (${phase}): [] — SFU 仍未统计到 RTP。请确认：① 端口与 FFmpeg 一致 ② 同机 127.0.0.1 ③ tcpdump -i lo 有包。若 tcpdump 有包仍为空：查 PlainTransport comedia / connect()（FFmpeg 源端口为临时端口时需 comedia:true）`,
                       );
                       return;
                     }
