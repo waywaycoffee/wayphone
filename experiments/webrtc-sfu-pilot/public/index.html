@@ -30,7 +30,7 @@
   <p class="note">
     本页通过 WebSocket 与 mediasoup 完成 <strong>摄像头 → SFU → 另一浏览器 Tab</strong> 的最小闭环。
     不包含 Redroid / 安卓采集（Layer C）。需先执行 <code>npm install</code> 与 <code>npm run build:client</code> 生成
-    <code>public/mediasoup-client.esm.js</code>。局域网访问时请在服务端设置 <code>MEDIASOUP_ANNOUNCED_IP</code>。
+    <code>public/mediasoup-client.esm.js</code>。    局域网访问时请在服务端设置 <code>MEDIASOUP_ANNOUNCED_IP</code>（填浏览器连 SFU 媒体面用的<strong>公网 EIP 数字</strong>，与 HTTPS 域名无关）。<strong>他人「仅观看」黑屏</strong>时：云安全组须放行 SFU 的 <strong>UDP 40000–49999</strong>；对方网络若限制 UDP 可能需 TURN（本 PoC 未内置）。刷新后看日志里的 <code>bytesReceived</code> 与 <code>unmute</code> 提示。
   </p>
   <div class="row">
     <button type="button" id="btnPublish">发布摄像头（连接 SFU）</button>

@@ -2,7 +2,8 @@
 
 在 **Linux 云主机（ECS / VPS）** 上跑本仓库实验，比在 Mac Docker Desktop 上更接近 **Redroid + mediasoup** 的真实部署形态。本文只列**可操作清单**；Redroid 与 ADB 隧道见根目录 **`README.md`**、`docker-compose.yml` 与 **`docs/redroid-notes.md`**。
 
-**阿里云 ECS 分步清单（先跑通再扩展）**：见 **[aliyun-ecs-pilot.md](aliyun-ecs-pilot.md)**。
+**阿里云 ECS 分步清单（先跑通再扩展）**：见 **[aliyun-ecs-pilot.md](aliyun-ecs-pilot.md)**。  
+**x86 本地 Linux（与云上同一套 Docker/compose，网络/KVM 差异）**：见 **[local-x86-linux.md](local-x86-linux.md)**。
 
 ## 1. 云机建议配置
 

@@ -1,5 +1,7 @@
 # Linux: mediasoup 需编译 native；部署时建议 host 网络并设置 MEDIASOUP_ANNOUNCED_IP
-FROM node:20-bookworm
+# 国内部分镜像源对 library/node 403/404 时：docker compose build --build-arg NODE_IMAGE=docker.m.daocloud.io/library/node:20-bookworm
+ARG NODE_IMAGE=node:20-bookworm
+FROM ${NODE_IMAGE}
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends python3 make g++ \

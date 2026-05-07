@@ -170,14 +170,38 @@ async function consumeIfViewer(producerId) {
   if (consumer.paused) {
     consumer.resume();
   }
-  remoteVideo.srcObject = new MediaStream([consumer.track]);
+  const track = consumer.track;
+  track.addEventListener('unmute', () => log('远端 video 轨 unmute（开始收到媒体）'));
+  track.addEventListener('mute', () => log('远端 video 轨 mute（暂无媒体帧，多为网络/NAT）'));
+  track.addEventListener('ended', () => log('远端 video 轨 ended'));
+  remoteVideo.srcObject = new MediaStream([track]);
   consumedProducerIds.add(producerId);
-  log(`正在播放远端轨 consumer=${consumer.id}`);
+  log(
+    `正在播放远端轨 consumer=${consumer.id} readyState=${track.readyState} muted=${track.muted}`,
+  );
   try {
     await remoteVideo.play();
   } catch (e) {
     log(`远端 video.play 失败: ${e.message}（可试点击页面后再点「仅观看」）`);
   }
+  // 2s 后看是否收到 RTP（他人网络若阻 UDP，常为 bytesReceived=0）
+  setTimeout(() => {
+    recvTransport
+      .getStats()
+      .then((report) => {
+        let inbound = 0;
+        for (const s of report.values()) {
+          if (s.type === 'inbound-rtp' && s.kind === 'video') {
+            inbound = s.bytesReceived || 0;
+            break;
+          }
+        }
+        log(
+          `约 2s 时 inbound-rtp video bytesReceived≈${inbound}（为 0 则多为对端/本机 UDP 未通或需 TURN）`,
+        );
+      })
+      .catch(() => {});
+  }, 2000);
 }
 
 document.getElementById('btnPublish').addEventListener('click', async () => {

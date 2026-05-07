@@ -6,7 +6,10 @@
 
 services:
   webrtc-sfu-pilot:
-    build: .
+    build:
+      context: .
+      args:
+        NODE_IMAGE: ${NODE_IMAGE:-node:20-bookworm}
     network_mode: host
     environment:
       PORT: ${PORT:-3000}
