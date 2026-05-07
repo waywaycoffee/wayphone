@@ -23,6 +23,19 @@ adb devices
 
 根目录 `docker-compose.yml` 默认将 **5555 绑在 `127.0.0.1`**，请勿随意改为对公网 `0.0.0.0` 开放。
 
+## 容器状态 `Restarting`、且 `docker port` 无 5555
+
+**现象**：`docker compose ps` 里 **STATUS** 为 **`Restarting (…)`**，`docker port cloudphone-redroid 5555/tcp` 提示 **no public port**。根因多是 **Redroid 没跑稳就反复退出**，端口映射不会正常生效。
+
+**处理顺序**：
+
+1. 看日志：`docker logs cloudphone-redroid --tail=120`（搜 `binder`、`memfd`、`FATAL`）。  
+2. **Binder**：若见 **`/dev/binder` No such file**，按下文 **Binder** 一节执行 **`scripts/setup-binder-devices.sh`**。  
+3. **memfd（5.15+ 云内核常见）**：根目录 **`docker-compose.yml`** 的 **`command`** 里已默认带 **`androidboot.use_memfd=0`**；改完后 **`docker compose up -d --force-recreate`**。  
+4. 确认 **`STATUS` 为 `Up` 若干分钟** 后，再执行 **`docker port cloudphone-redroid 5555/tcp`** 与 **`scripts/layer-c0-redroid-on-ecs.sh`**。
+
+---
+
 ## Binder 与容器反复重启（`/dev/binder` No such file）
 
 若 `docker logs` / logcat 出现 **`Binder driver '/dev/binder' could not be opened`**，说明 **容器内（或宿主）没有可用的 classic binder 节点**。

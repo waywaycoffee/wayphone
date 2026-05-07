@@ -16,9 +16,9 @@ services:
     # 不对外绑定公网，仅本机，配合 SSH 端口转发访问；若必须公网请改但务必限制来源 IP
     ports:
       - "127.0.0.1:${REDROID_HOST_PORT:-5555}:5555"
-    # 5.15+ 内核云机若启动失败，可取消下一行注释或见 redroid-doc
-    # - "androidboot.use_memfd=0"
+    # 5.15+ 内核云机常见启动失败/反复重启，见 redroid-doc；不需要时可从 command 中删掉下一行
     command:
+      - "androidboot.use_memfd=0"
       - "androidboot.redroid_width=720"
       - "androidboot.redroid_height=1280"
       - "androidboot.redroid_dpi=320"
