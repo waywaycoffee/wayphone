@@ -3,7 +3,15 @@
 # 用法（必须在 experiments/webrtc-sfu-pilot 目录）:
 #   chmod +x scripts/run-c1-ffmpeg-ingest.sh
 #   bash scripts/run-c1-ffmpeg-ingest.sh
+#   bash scripts/run-c1-ffmpeg-ingest.sh --local   # 强制 127.0.0.1（覆盖 C1_USE_LOOPBACK=0）
 set -euo pipefail
+
+FORCE_LOCAL=0
+for arg in "$@"; do
+  if [[ "${arg}" == "--local" ]]; then
+    FORCE_LOCAL=1
+  fi
+done
 
 REPO_DIR=$(cd "$(dirname "$0")/.." && pwd)
 cd "$REPO_DIR"
@@ -60,7 +68,12 @@ fi
 # 与 Docker host 网络 + mediasoup 绑 0.0.0.0 时，FFmpeg 发往「本机 EIP」常因 UDP hairpin 丢包，SFU 收不到真实媒体（浏览器仍可能有一点 SRTP 字节但 framesDecoded=0）。
 # 默认同机用 127.0.0.1；FFmpeg 在另一台机器上时再：export C1_USE_LOOPBACK=0
 USE_LOOPBACK=${C1_USE_LOOPBACK:-1}
-if [[ "${USE_LOOPBACK}" == "1" ]] && [[ "${HOST}" != "127.0.0.1" ]]; then
+if [[ "${FORCE_LOCAL}" == "1" ]]; then
+  if [[ "${HOST}" != "127.0.0.1" ]]; then
+    echo "提示: --local 已指定，RTP 目标固定为 127.0.0.1:${PORT}（原 host=${HOST}，避免本机→EIP UDP hairpin）" >&2
+  fi
+  HOST="127.0.0.1"
+elif [[ "${USE_LOOPBACK}" == "1" ]] && [[ "${HOST}" != "127.0.0.1" ]]; then
   echo "提示: RTP 改为 127.0.0.1:${PORT}（原日志 host=${HOST}，避免本机→EIP UDP hairpin）。跨机 ingest 请 C1_USE_LOOPBACK=0" >&2
   HOST="127.0.0.1"
 fi
