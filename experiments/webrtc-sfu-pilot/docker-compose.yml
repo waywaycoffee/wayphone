@@ -1,4 +1,8 @@
 # Linux 建议：host 网络便于 mediasoup UDP；浏览器访问 http://<服务器IP>:3000
+#
+# Redroid（androidboot.use_memfd / redroid_width 等）在仓库根目录 docker-compose.yml，
+# 勿写在本文件；本文件仅定义 mediasoup 试点服务。
+#
 # 用法（本目录）:
 #   MEDIASOUP_ANNOUNCED_IP=192.168.1.10 docker compose up --build
 #
