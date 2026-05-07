@@ -16,10 +16,12 @@ services:
         NODE_IMAGE: ${NODE_IMAGE:-node:20-bookworm}
     network_mode: host
     environment:
-      PILOT_VERSION: ${PILOT_VERSION:-pilot-20260206c}
+      PILOT_VERSION: ${PILOT_VERSION:-pilot-20260207}
       PORT: ${PORT:-3000}
       MEDIASOUP_ANNOUNCED_IP: ${MEDIASOUP_ANNOUNCED_IP:-127.0.0.1}
       MEDIASOUP_RTC_MIN_PORT: ${MEDIASOUP_RTC_MIN_PORT:-40000}
       MEDIASOUP_RTC_MAX_PORT: ${MEDIASOUP_RTC_MAX_PORT:-49999}
       # Layer C1 PoC：FFmpeg → PlainTransport。宿主机推荐 scripts/run-c1-ffmpeg-ingest.sh（从 compose 日志解析 host/port）
+      # 浏览器有 RTP 但 framesDecoded=0 / 黑屏时，改为 vp8：MEDIASOUP_INGEST_CODEC=vp8（需重建镜像）
       MEDIASOUP_INGEST_TEST: ${MEDIASOUP_INGEST_TEST:-0}
+      MEDIASOUP_INGEST_CODEC: ${MEDIASOUP_INGEST_CODEC:-h264}

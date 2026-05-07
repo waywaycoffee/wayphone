@@ -1,7 +1,7 @@
 import { Device } from './mediasoup-client.esm.js';
 
 /** 与 index.html 中 app.mjs 查询参数同步 bump，便于确认已加载新前端 */
-const FRONTEND_BUILD = 'pilot-20260206c';
+const FRONTEND_BUILD = 'pilot-20260207';
 
 const logEl = document.getElementById('log');
 const localVideo = document.getElementById('localVideo');
@@ -168,7 +168,17 @@ async function logRecvDiagnostics(label, consumer, recvTransport, sawRemoteUnmut
         );
       }
     }
-    log(`${label} consumer.getStats: ${parts.length ? parts.join(' | ') : '无 inbound-rtp'}`);
+    if (parts.length) {
+      log(`${label} consumer.getStats: ${parts.join(' | ')}`);
+    } else {
+      const types = [];
+      for (const s of rs.values()) {
+        types.push(s.type + (s.kind ? `/${s.kind}` : ''));
+      }
+      log(
+        `${label} consumer.getStats: 无 inbound-rtp（本浏览器统计类型: ${types.slice(0, 12).join(', ') || '空'}）`,
+      );
+    }
   } catch (e) {
     log(`${label} consumer.getStats 失败: ${e.message}`);
   }
@@ -182,10 +192,14 @@ async function logRecvDiagnostics(label, consumer, recvTransport, sawRemoteUnmut
         if (s.kind === 'video' && s.framesDecoded != null) decoded = s.framesDecoded;
       }
     }
-    log(
+    let line =
       `${label} transport.getStats: inbound-rtp 合计 bytes≈${bytes}` +
-        (decoded != null ? ` framesDecoded=${decoded}` : ''),
-    );
+      (decoded != null ? ` framesDecoded=${decoded}` : '');
+    if (bytes > 2000 && (decoded === 0 || decoded === undefined)) {
+      line +=
+        ' → 有流量但无解码帧：多为 H264 与浏览器不兼容，服务端设 MEDIASOUP_INGEST_CODEC=vp8 后重建容器，宿主机跑 run-c1-ffmpeg-ingest.sh';
+    }
+    log(line);
   } catch (e) {
     log(`${label} transport.getStats 失败: ${e.message}`);
   }
@@ -241,10 +255,17 @@ async function consumeIfViewer(producerId) {
   track.addEventListener('ended', () => log('远端 video 轨 ended'));
   remoteVideo.srcObject = new MediaStream([track]);
   consumedProducerIds.add(producerId);
+  const vcodec = consumer.rtpParameters?.codecs?.[0];
   log(
     `正在播放远端轨 consumer=${consumer.id} readyState=${track.readyState} track.muted=${track.muted}`,
   );
-  log('提示：向下滚动看 [1s]/[3s] 诊断；video 尺寸多次采样在下方。');
+  log(
+    `远端协商编码: ${vcodec?.mimeType || '?'} PT=${vcodec?.payloadType ?? '?'}` +
+      (String(vcodec?.mimeType || '').includes('H264')
+        ? '（若一直 framesDecoded=0，请改用 VP8 ingest）'
+        : ''),
+  );
+  log('提示：[1s]/[3s] 诊断；video 尺寸仅在 2s / 6s 各打一行，减少刷屏。');
   // unmute 可能在绑定监听器之前就触发，必须在同一轮后补一次 play
   queueMicrotask(() => {
     if (!track.muted) {
@@ -279,14 +300,16 @@ async function consumeIfViewer(producerId) {
       );
     });
   }
-  let polls = 0;
-  const dimTimer = setInterval(() => {
-    polls += 1;
+  setTimeout(() => {
     log(
-      `[${polls * 500}ms] 远端 video: ${remoteVideo.videoWidth}x${remoteVideo.videoHeight} paused=${remoteVideo.paused} readyState=${remoteVideo.readyState}`,
+      `[2s] 远端 video: ${remoteVideo.videoWidth}x${remoteVideo.videoHeight} readyState=${remoteVideo.readyState}`,
     );
-    if (polls >= 12) clearInterval(dimTimer);
-  }, 500);
+  }, 2000);
+  setTimeout(() => {
+    log(
+      `[6s] 远端 video: ${remoteVideo.videoWidth}x${remoteVideo.videoHeight} readyState=${remoteVideo.readyState}`,
+    );
+  }, 6000);
   setTimeout(() => logRecvDiagnostics('[1s]', consumer, recvTransport, sawRemoteUnmuteRef), 1000);
   setTimeout(() => logRecvDiagnostics('[3s]', consumer, recvTransport, sawRemoteUnmuteRef), 3000);
 }

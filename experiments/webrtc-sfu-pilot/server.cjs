@@ -12,7 +12,7 @@ const HTTP_LISTEN_HOST = process.env.HTTP_LISTEN_HOST || '0.0.0.0';
 const RTC_MIN_PORT = Number(process.env.MEDIASOUP_RTC_MIN_PORT || 40000);
 const RTC_MAX_PORT = Number(process.env.MEDIASOUP_RTC_MAX_PORT || 49999);
 /** 与前端/镜像一致；`curl http://<EIP>:3000/__pilot_version` 可验证是否已部署新镜像（与浏览器缓存无关） */
-const PILOT_VERSION = process.env.PILOT_VERSION || 'pilot-20260206c';
+const PILOT_VERSION = process.env.PILOT_VERSION || 'pilot-20260207';
 
 function listenIpConfig() {
   const announcedIp = process.env.MEDIASOUP_ANNOUNCED_IP;
@@ -65,12 +65,14 @@ function listProducerSummaries(peers, ingestCtx) {
   return producers;
 }
 
-/** MEDIASOUP_INGEST_TEST=1：FFmpeg RTP(H264) → PlainTransport → Producer（Layer C1 PoC） */
+/** MEDIASOUP_INGEST_TEST=1：FFmpeg RTP → PlainTransport → Producer（Layer C1 PoC） */
 async function setupPlainIngest({ router, peers, ingestCtx, broadcastFn }) {
   if (process.env.MEDIASOUP_INGEST_TEST !== '1') return;
 
   const RTP_PAYLOAD_TYPE = Number(process.env.MEDIASOUP_INGEST_PT || 96);
   const RTP_SSRC = Number(process.env.MEDIASOUP_INGEST_SSRC || 111222333);
+  const ingestCodec = (process.env.MEDIASOUP_INGEST_CODEC || 'h264').toLowerCase();
+  const useVp8 = ingestCodec === 'vp8';
 
   const li = plainTransportListenInfo();
   const plainTransport = await router.createPlainTransport({
@@ -82,29 +84,37 @@ async function setupPlainIngest({ router, peers, ingestCtx, broadcastFn }) {
   ingestCtx.plainTransport = plainTransport;
   console.log('Layer C1 PlainTransport listenInfo:', JSON.stringify(li));
 
+  const videoCodec = useVp8
+    ? {
+        mimeType: 'video/VP8',
+        payloadType: RTP_PAYLOAD_TYPE,
+        clockRate: 90000,
+        parameters: {},
+        rtcpFeedback: [],
+      }
+    : {
+        mimeType: 'video/H264',
+        payloadType: RTP_PAYLOAD_TYPE,
+        clockRate: 90000,
+        parameters: {
+          'packetization-mode': 1,
+          'profile-level-id': '42e01f',
+          'level-asymmetry-allowed': 1,
+        },
+        rtcpFeedback: [],
+      };
+
   const producer = await plainTransport.produce({
     kind: 'video',
     rtpParameters: {
-      codecs: [
-        {
-          mimeType: 'video/H264',
-          payloadType: RTP_PAYLOAD_TYPE,
-          clockRate: 90000,
-          parameters: {
-            'packetization-mode': 1,
-            'profile-level-id': '42e01f',
-            'level-asymmetry-allowed': 1,
-          },
-          rtcpFeedback: [],
-        },
-      ],
+      codecs: [videoCodec],
       encodings: [{ ssrc: RTP_SSRC }],
       rtcp: {
         cname: 'layer-c1-ingest',
         reducedSize: true,
       },
     },
-    appData: { source: 'plain-ingest-test' },
+    appData: { source: 'plain-ingest-test', codec: useVp8 ? 'vp8' : 'h264' },
   });
 
   ingestCtx.producer = producer;
@@ -118,16 +128,21 @@ async function setupPlainIngest({ router, peers, ingestCtx, broadcastFn }) {
   const lip = tuple.localIp || '127.0.0.1';
   const ffmpegHost = lip === '0.0.0.0' || lip === '::' ? '127.0.0.1' : lip;
   const ffmpegPort = tuple.localPort;
+  const ffmpegScript = useVp8 ? 'ffmpeg-ingest-vp8.sh' : 'ffmpeg-ingest-h264.sh';
 
   console.log('');
-  console.log('=== Layer C1 ingest (PlainTransport H264, FFmpeg test pattern) ===');
+  console.log(
+    `=== Layer C1 ingest (PlainTransport ${useVp8 ? 'VP8' : 'H264'}, FFmpeg test pattern) ===`,
+  );
+  console.log(
+    'MEDIASOUP_INGEST_CODEC:',
+    useVp8 ? 'vp8（若 H264 黑屏/framesDecoded=0 可改用此项）' : 'h264（默认）',
+  );
   console.log(
     '推荐: bash scripts/run-c1-ffmpeg-ingest.sh  # 从 docker compose logs 解析 host/port 并启动 FFmpeg',
   );
   console.log('mediasoup RTP tuple:', `${lip}:${ffmpegPort}`);
-  console.log(
-    `手动（或排错）: bash scripts/ffmpeg-ingest-h264.sh ${ffmpegHost} ${ffmpegPort}`,
-  );
+  console.log(`手动（或排错）: bash scripts/${ffmpegScript} ${ffmpegHost} ${ffmpegPort}`);
   console.log(
     `  PT=${RTP_PAYLOAD_TYPE} SSRC=${RTP_SSRC} (env MEDIASOUP_INGEST_PT / MEDIASOUP_INGEST_SSRC)`,
   );

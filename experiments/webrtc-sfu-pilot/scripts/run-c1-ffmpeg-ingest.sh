@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Layer C1 推荐入口：从 docker compose / 容器日志解析 RTP host/port，再启动 ffmpeg-ingest-h264.sh。
+# Layer C1 推荐入口：从 docker compose / 容器日志解析 RTP host/port，再启动 ffmpeg-ingest-h264.sh 或 ffmpeg-ingest-vp8.sh。
 # 用法（必须在 experiments/webrtc-sfu-pilot 目录）:
 #   chmod +x scripts/run-c1-ffmpeg-ingest.sh
 #   bash scripts/run-c1-ffmpeg-ingest.sh
@@ -20,13 +20,17 @@ LOG=$(collect_logs)
 # 去掉 compose 常见前缀「容器名 | 」
 STRIPPED=$(echo "${LOG}" | sed -E 's/^[^|]+\|[[:space:]]+//')
 
-# 日志格式：ffmpeg-ingest-h264.sh <host> <port>（host 可为 127.0.0.1 或 EIP，如 8.163.51.24）
-HOST_PORT=$(echo "${STRIPPED}" | sed -n 's/.*ffmpeg-ingest-h264\.sh \([0-9.]*\) \([0-9][0-9]*\).*/\1 \2/p' | tail -n1)
+# 日志格式：ffmpeg-ingest-h264.sh / ffmpeg-ingest-vp8.sh <host> <port>
+INGEST_CMD=$(echo "${STRIPPED}" | grep -oE 'ffmpeg-ingest-(h264|vp8)\.sh[[:space:]]+[0-9.]+[[:space:]]+[0-9]+' | tail -n1)
+SCRIPT_BASENAME="ffmpeg-ingest-h264.sh"
 HOST=""
 PORT=""
-if [[ -n "${HOST_PORT}" ]]; then
-  HOST=$(echo "${HOST_PORT}" | awk '{print $1}')
-  PORT=$(echo "${HOST_PORT}" | awk '{print $2}')
+if [[ -n "${INGEST_CMD}" ]]; then
+  if [[ "${INGEST_CMD}" == *vp8* ]]; then
+    SCRIPT_BASENAME="ffmpeg-ingest-vp8.sh"
+  fi
+  HOST=$(echo "${INGEST_CMD}" | awk '{print $2}')
+  PORT=$(echo "${INGEST_CMD}" | awk '{print $3}')
 fi
 
 if [[ -z "${PORT}" ]]; then
@@ -35,6 +39,10 @@ if [[ -z "${PORT}" ]]; then
   if [[ -n "${TUPLE}" ]]; then
     HOST="${TUPLE%%:*}"
     PORT="${TUPLE##*:}"
+    CODEC="${MEDIASOUP_INGEST_CODEC:-h264}"
+    if [[ "${CODEC}" == "vp8" ]]; then
+      SCRIPT_BASENAME="ffmpeg-ingest-vp8.sh"
+    fi
   fi
 fi
 
@@ -49,6 +57,6 @@ if [[ "${HOST}" == "0.0.0.0" ]]; then
   HOST="127.0.0.1"
 fi
 
-echo "解析到 RTP 目标: ${HOST}:${PORT}"
-chmod +x "${REPO_DIR}/scripts/ffmpeg-ingest-h264.sh"
-exec bash "${REPO_DIR}/scripts/ffmpeg-ingest-h264.sh" "${HOST}" "${PORT}"
+echo "解析到 RTP 目标: ${HOST}:${PORT}（脚本: ${SCRIPT_BASENAME}）"
+chmod +x "${REPO_DIR}/scripts/ffmpeg-ingest-h264.sh" "${REPO_DIR}/scripts/ffmpeg-ingest-vp8.sh"
+exec bash "${REPO_DIR}/scripts/${SCRIPT_BASENAME}" "${HOST}" "${PORT}"

@@ -18,6 +18,6 @@ exec ffmpeg -hide_banner -loglevel warning -re \
   -f lavfi -i "testsrc=size=640x480:rate=15" -pix_fmt yuv420p \
   -c:v libx264 -preset ultrafast -tune zerolatency -profile:v baseline -level 3.1 \
   -bf 0 -g 30 -keyint_min 30 \
-  -x264-params "repeat-headers=1" \
+  -x264-params "repeat-headers=1:aud=1" \
   -payload_type "${PT}" -ssrc "${SSRC}" \
   -f rtp "rtp://${HOST}:${PORT}?pkt_size=1200&rtcpport=${PORT}"
