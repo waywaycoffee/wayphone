@@ -11,6 +11,8 @@ const PORT = Number(process.env.PORT || 3000);
 const HTTP_LISTEN_HOST = process.env.HTTP_LISTEN_HOST || '0.0.0.0';
 const RTC_MIN_PORT = Number(process.env.MEDIASOUP_RTC_MIN_PORT || 40000);
 const RTC_MAX_PORT = Number(process.env.MEDIASOUP_RTC_MAX_PORT || 49999);
+/** 与前端/镜像一致；`curl http://<EIP>:3000/__pilot_version` 可验证是否已部署新镜像（与浏览器缓存无关） */
+const PILOT_VERSION = process.env.PILOT_VERSION || 'pilot-20260206c';
 
 function listenIpConfig() {
   const announcedIp = process.env.MEDIASOUP_ANNOUNCED_IP;
@@ -119,9 +121,12 @@ async function setupPlainIngest({ router, peers, ingestCtx, broadcastFn }) {
 
   console.log('');
   console.log('=== Layer C1 ingest (PlainTransport H264, FFmpeg test pattern) ===');
+  console.log(
+    '推荐: bash scripts/run-c1-ffmpeg-ingest.sh  # 从 docker compose logs 解析 host/port 并启动 FFmpeg',
+  );
   console.log('mediasoup RTP tuple:', `${lip}:${ffmpegPort}`);
   console.log(
-    `ECS/host: bash scripts/ffmpeg-ingest-h264.sh ${ffmpegHost} ${ffmpegPort}`,
+    `手动（或排错）: bash scripts/ffmpeg-ingest-h264.sh ${ffmpegHost} ${ffmpegPort}`,
   );
   console.log(
     `  PT=${RTP_PAYLOAD_TYPE} SSRC=${RTP_SSRC} (env MEDIASOUP_INGEST_PT / MEDIASOUP_INGEST_SSRC)`,
@@ -203,6 +208,21 @@ async function main() {
   }
 
   const app = express();
+  app.get('/__pilot_version', (_req, res) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+    res.type('text/plain').send(`${PILOT_VERSION}\n`);
+  });
+  app.get('/__pilot_health', (_req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({ ok: true, pilotVersion: PILOT_VERSION });
+  });
+  // 避免浏览器/CDN 强缓存旧 app.mjs（用户曾看到与仓库不一致的日志文案）
+  app.use((req, res, next) => {
+    if (/\.(mjs|js|html)$/i.test(req.path)) {
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+    }
+    next();
+  });
   app.use(express.static(path.join(__dirname, 'public')));
 
   const httpServer = http.createServer(app);
@@ -353,6 +373,36 @@ async function main() {
               await consumer.resume();
             }
             reply(ws, requestId, { ok: true });
+            if (
+              process.env.MEDIASOUP_INGEST_TEST === '1' &&
+              ingestCtx.producer &&
+              !ingestCtx.producer.closed &&
+              consumer.producerId === ingestCtx.producer.id
+            ) {
+              setTimeout(() => {
+                ingestCtx.producer
+                  .getStats()
+                  .then((stats) => {
+                    const v = Array.isArray(stats)
+                      ? stats.find((s) => s.type === 'inbound-rtp' && s.kind === 'video')
+                      : null;
+                    if (v) {
+                      console.log(
+                        'Layer C1 FFmpeg→SFU (ingest producer):',
+                        `packetCount=${v.packetCount} byteCount=${v.byteCount} bitrate=${v.bitrate}`,
+                      );
+                      if (Number(v.packetCount) === 0) {
+                        console.warn(
+                          'Layer C1: ingest 收包为 0 — 确认 FFmpeg 在跑；RTP 目标端口正确；脚本已使用 rtcpport=与 RTP 同端口（rtcpMux）。',
+                        );
+                      }
+                    } else {
+                      console.log('Layer C1 ingest producer getStats:', JSON.stringify(stats));
+                    }
+                  })
+                  .catch((e) => console.warn('Layer C1 producer getStats failed:', e));
+              }, 1500);
+            }
             break;
           }
           default:
@@ -392,6 +442,11 @@ async function main() {
       JSON.stringify(listenIpConfig()),
     );
     console.log('HTTP + WebSocket bind:', `${HTTP_LISTEN_HOST}:${PORT}`);
+    console.log(
+      '  PILOT_VERSION:',
+      PILOT_VERSION,
+      `(验证: curl -sS http://127.0.0.1:${PORT}/__pilot_version)`,
+    );
     const ann = process.env.MEDIASOUP_ANNOUNCED_IP;
     if (ann) console.log('  Remote browser URL:', `http://${ann}:${PORT}/`);
     else console.log('  Remote browser URL: set MEDIASOUP_ANNOUNCED_IP (e.g. EIP) for WebRTC + bookmark');
@@ -399,7 +454,7 @@ async function main() {
     if (process.env.MEDIASOUP_INGEST_TEST === '1') {
       if (ingestCtx.ingestReady) {
         console.log(
-          'Layer C1: ingest OK — run: bash scripts/run-c1-ffmpeg-ingest.sh (or ffmpeg line above), then 「仅观看」.',
+          'Layer C1: ingest OK — 推荐: bash scripts/run-c1-ffmpeg-ingest.sh（自动解析日志）；再浏览器「仅观看」.',
         );
       } else {
         console.warn(

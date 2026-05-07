@@ -8,7 +8,8 @@
   },
   "scripts": {
     "start": "node server.cjs",
-    "build:client": "esbuild client/entry.mjs --bundle --format=esm --outfile=public/mediasoup-client.esm.js --platform=browser"
+    "build:client": "esbuild client/entry.mjs --bundle --format=esm --outfile=public/mediasoup-client.esm.js --platform=browser",
+    "c1:ingest": "bash scripts/run-c1-ffmpeg-ingest.sh"
   },
   "dependencies": {
     "express": "^4.21.0",

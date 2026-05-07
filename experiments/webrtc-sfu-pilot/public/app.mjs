@@ -1,5 +1,8 @@
 import { Device } from './mediasoup-client.esm.js';
 
+/** 与 index.html 中 app.mjs 查询参数同步 bump，便于确认已加载新前端 */
+const FRONTEND_BUILD = 'pilot-20260206c';
+
 const logEl = document.getElementById('log');
 const localVideo = document.getElementById('localVideo');
 const remoteVideo = document.getElementById('remoteVideo');
@@ -17,6 +20,9 @@ let ws;
 let device;
 let sendTransport;
 let recvTransport;
+
+/** 连续多次 play() 会互相 Abort，必须串行 */
+let remotePlayChain = Promise.resolve();
 
 async function flushProducerQueue() {
   if (!recvTransport) return;
@@ -150,6 +156,46 @@ async function createSendPipeline() {
   log('SendTransport 已创建');
 }
 
+/** 区分「SFU→浏览器没收 RTP」与「收到了但解不出」；请向下滚动日志区看完整输出 */
+async function logRecvDiagnostics(label, consumer, recvTransport, sawRemoteUnmuteRef) {
+  try {
+    const rs = await consumer.getStats();
+    const parts = [];
+    for (const s of rs.values()) {
+      if (s.type === 'inbound-rtp') {
+        parts.push(
+          `inbound-rtp kind=${s.kind || '?'} bytes=${s.bytesReceived ?? 0} pkts=${s.packetsReceived ?? 0} decoded=${s.framesDecoded ?? 'n/a'}`,
+        );
+      }
+    }
+    log(`${label} consumer.getStats: ${parts.length ? parts.join(' | ') : '无 inbound-rtp'}`);
+  } catch (e) {
+    log(`${label} consumer.getStats 失败: ${e.message}`);
+  }
+  try {
+    const ts = await recvTransport.getStats();
+    let bytes = 0;
+    let decoded;
+    for (const s of ts.values()) {
+      if (s.type === 'inbound-rtp') {
+        bytes += Number(s.bytesReceived || 0);
+        if (s.kind === 'video' && s.framesDecoded != null) decoded = s.framesDecoded;
+      }
+    }
+    log(
+      `${label} transport.getStats: inbound-rtp 合计 bytes≈${bytes}` +
+        (decoded != null ? ` framesDecoded=${decoded}` : ''),
+    );
+  } catch (e) {
+    log(`${label} transport.getStats 失败: ${e.message}`);
+  }
+  if (!sawRemoteUnmuteRef.v) {
+    log(
+      `${label} 仍未触发「远端 unmute」— 若 bytes≈0：查 ECS 安全组 UDP 40000–49999；若 bytes>0 仍黑屏：换 Chrome 试或看服务端 ingest 收包统计`,
+    );
+  }
+}
+
 async function consumeIfViewer(producerId) {
   if (!recvTransport) return;
   if (consumedProducerIds.has(producerId)) return;
@@ -171,37 +217,78 @@ async function consumeIfViewer(producerId) {
     consumer.resume();
   }
   const track = consumer.track;
-  track.addEventListener('unmute', () => log('远端 video 轨 unmute（开始收到媒体）'));
+  const sawRemoteUnmuteRef = { v: false };
+
+  function tryPlayRemoteVideo(reason) {
+    remoteVideo.muted = true;
+    remotePlayChain = remotePlayChain.then(async () => {
+      try {
+        await remoteVideo.play();
+        log(`远端 video.play OK（${reason}）`);
+      } catch (e) {
+        log(`远端 video.play（${reason}）: ${e.name} — ${e.message}`);
+      }
+    });
+    return remotePlayChain;
+  }
+
+  track.addEventListener('unmute', () => {
+    sawRemoteUnmuteRef.v = true;
+    log('远端 video 轨 unmute（开始收到媒体）');
+    void tryPlayRemoteVideo('unmute 后重试');
+  });
   track.addEventListener('mute', () => log('远端 video 轨 mute（暂无媒体帧，多为网络/NAT）'));
   track.addEventListener('ended', () => log('远端 video 轨 ended'));
   remoteVideo.srcObject = new MediaStream([track]);
   consumedProducerIds.add(producerId);
   log(
-    `正在播放远端轨 consumer=${consumer.id} readyState=${track.readyState} muted=${track.muted}`,
+    `正在播放远端轨 consumer=${consumer.id} readyState=${track.readyState} track.muted=${track.muted}`,
   );
-  try {
-    await remoteVideo.play();
-  } catch (e) {
-    log(`远端 video.play 失败: ${e.message}（可试点击页面后再点「仅观看」）`);
+  log('提示：向下滚动看 [1s]/[3s] 诊断；video 尺寸多次采样在下方。');
+  // unmute 可能在绑定监听器之前就触发，必须在同一轮后补一次 play
+  queueMicrotask(() => {
+    if (!track.muted) {
+      sawRemoteUnmuteRef.v = true;
+      log('远端轨已是 unmuted（补绑：立即 play）');
+      void tryPlayRemoteVideo('microtask 已 unmuted');
+    }
+  });
+  remoteVideo.addEventListener(
+    'loadeddata',
+    () => {
+      void tryPlayRemoteVideo('loadeddata');
+    },
+    { once: true },
+  );
+  remoteVideo.addEventListener(
+    'playing',
+    () => {
+      log(
+        `远端 video playing 事件: ${remoteVideo.videoWidth}x${remoteVideo.videoHeight} paused=${remoteVideo.paused}`,
+      );
+    },
+    { once: true },
+  );
+  void tryPlayRemoteVideo('srcObject 后首次');
+  setTimeout(() => void tryPlayRemoteVideo('400ms 后'), 400);
+  setTimeout(() => void tryPlayRemoteVideo('1.2s 后'), 1200);
+  if (typeof remoteVideo.requestVideoFrameCallback === 'function') {
+    remoteVideo.requestVideoFrameCallback(() => {
+      log(
+        `远端 requestVideoFrameCallback: ${remoteVideo.videoWidth}x${remoteVideo.videoHeight}`,
+      );
+    });
   }
-  // 2s 后看是否收到 RTP（他人网络若阻 UDP，常为 bytesReceived=0）
-  setTimeout(() => {
-    recvTransport
-      .getStats()
-      .then((report) => {
-        let inbound = 0;
-        for (const s of report.values()) {
-          if (s.type === 'inbound-rtp' && s.kind === 'video') {
-            inbound = s.bytesReceived || 0;
-            break;
-          }
-        }
-        log(
-          `约 2s 时 inbound-rtp video bytesReceived≈${inbound}（为 0 则多为对端/本机 UDP 未通或需 TURN）`,
-        );
-      })
-      .catch(() => {});
-  }, 2000);
+  let polls = 0;
+  const dimTimer = setInterval(() => {
+    polls += 1;
+    log(
+      `[${polls * 500}ms] 远端 video: ${remoteVideo.videoWidth}x${remoteVideo.videoHeight} paused=${remoteVideo.paused} readyState=${remoteVideo.readyState}`,
+    );
+    if (polls >= 12) clearInterval(dimTimer);
+  }, 500);
+  setTimeout(() => logRecvDiagnostics('[1s]', consumer, recvTransport, sawRemoteUnmuteRef), 1000);
+  setTimeout(() => logRecvDiagnostics('[3s]', consumer, recvTransport, sawRemoteUnmuteRef), 3000);
 }
 
 document.getElementById('btnPublish').addEventListener('click', async () => {
@@ -243,12 +330,13 @@ document.getElementById('btnWatch').addEventListener('click', async () => {
     const videoP = (list.producers || []).find((p) => p.kind === 'video');
     if (videoP) {
       producerQueue.push(videoP.id);
-      await flushProducerQueue();
-      log('已订阅已有发布者');
     } else {
       log('当前还没有发布者，等待 newProducer…');
     }
     await flushProducerQueue();
+    if (videoP) {
+      log('已订阅已有发布者');
+    }
   } catch (e) {
     log(`观看失败: ${e.message}`);
     console.error(e);
@@ -258,7 +346,7 @@ document.getElementById('btnWatch').addEventListener('click', async () => {
 function connectWs() {
   ws = new WebSocket(wsUrl);
   ws.addEventListener('open', () => {
-    log(`WebSocket 已连接 ${wsUrl}`);
+    log(`前端构建 ${FRONTEND_BUILD} | WebSocket 已连接 ${wsUrl}`);
     attachWsHandlers();
   });
   ws.addEventListener('close', () => {

@@ -2,6 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
+  <meta http-equiv="Cache-Control" content="no-store" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>WebRTC SFU 试点 — Layer B</title>
   <style>
@@ -27,6 +28,7 @@
 </head>
 <body>
   <h1>WebRTC SFU 试点（Layer B：信令 + mediasoup-client）</h1>
+  <p class="note" style="color:#fcd34d">页面版本 pilot-20260206c（静态）；终端执行 <code>curl -sS http://本机EIP:3000/__pilot_version</code> 应输出同名一行</p>
   <p class="note">
     本页通过 WebSocket 与 mediasoup 完成 <strong>摄像头 → SFU → 另一浏览器 Tab</strong> 的最小闭环。
     可选 Layer C1：服务端 <code>MEDIASOUP_INGEST_TEST=1</code> + FFmpeg 时，可<strong>只「仅观看」</strong>收测试流（见 README）。不包含 Redroid 屏幕进 SFU（仍在 Layer C）。需先执行 <code>npm install</code> 与 <code>npm run build:client</code> 生成
@@ -43,10 +45,11 @@
     </div>
     <div>
       <div class="note">远端（SFU 转发）</div>
-      <video id="remoteVideo" autoplay playsinline muted></video>
+      <!-- 远端不要用 autoplay：会与脚本里 play() 争抢导致 AbortError / 黑屏 -->
+      <video id="remoteVideo" playsinline muted controls></video>
     </div>
   </div>
   <div id="log"></div>
-  <script type="module" src="/app.mjs"></script>
+  <script type="module" src="/app.mjs?v=pilot-20260206c"></script>
 </body>
 </html>

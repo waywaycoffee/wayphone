@@ -50,7 +50,8 @@ docker compose up -d --build
 docker compose logs --tail=30
 ```
 
-在 **宿主机**、本目录执行（**自动解析端口**）：**`bash scripts/run-c1-ffmpeg-ingest.sh`**。浏览器打开页面后 **只点「仅观看」**。说明：**`docs/layer-c-roadmap.md`** §C1.1。
+**推荐（默认）**：在 **与 Docker 同一台 ECS 宿主机**、**本目录**执行 **`bash scripts/run-c1-ffmpeg-ingest.sh`**（或 **`npm run c1:ingest`**）。脚本会读取 **`docker compose logs`**（及容器 `docker logs`），解析当次 **`ffmpeg-ingest-h264.sh <host> <port>`** 或 **`mediasoup RTP tuple:`**，再启动 FFmpeg，**避免容器重启后端口变化还要手抄**。  
+**备选**：终端里若已打印 **`bash scripts/ffmpeg-ingest-h264.sh …`**，也可原样执行（排错、或无 compose 时）。浏览器打开页面后 **只点「仅观看」**。说明：**`docs/layer-c-roadmap.md`** §C1.1。
 
 ### 公网 HTTPS 一条链接（可发摄像头）
 
