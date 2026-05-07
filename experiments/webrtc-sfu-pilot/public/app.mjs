@@ -1,7 +1,7 @@
 import { Device } from './mediasoup-client.esm.js';
 
 /** 与 index.html 中 app.mjs 查询参数同步 bump，便于确认已加载新前端 */
-const FRONTEND_BUILD = 'pilot-20260207';
+const FRONTEND_BUILD = 'pilot-20260207b';
 
 const logEl = document.getElementById('log');
 const localVideo = document.getElementById('localVideo');
@@ -156,8 +156,14 @@ async function createSendPipeline() {
   log('SendTransport 已创建');
 }
 
-/** 区分「SFU→浏览器没收 RTP」与「收到了但解不出」；请向下滚动日志区看完整输出 */
-async function logRecvDiagnostics(label, consumer, recvTransport, sawRemoteUnmuteRef) {
+/** 区分「SFU→浏览器没收 RTP」与「收到了但解不出」；negotiatedMime 如 video/VP8 用于纠正提示文案 */
+async function logRecvDiagnostics(
+  label,
+  consumer,
+  recvTransport,
+  sawRemoteUnmuteRef,
+  negotiatedMime = '',
+) {
   try {
     const rs = await consumer.getStats();
     const parts = [];
@@ -184,20 +190,35 @@ async function logRecvDiagnostics(label, consumer, recvTransport, sawRemoteUnmut
   }
   try {
     const ts = await recvTransport.getStats();
-    let bytes = 0;
+    let videoBytes = 0;
+    let otherRtpBytes = 0;
     let decoded;
     for (const s of ts.values()) {
       if (s.type === 'inbound-rtp') {
-        bytes += Number(s.bytesReceived || 0);
-        if (s.kind === 'video' && s.framesDecoded != null) decoded = s.framesDecoded;
+        const b = Number(s.bytesReceived || 0);
+        if (s.kind === 'video') {
+          videoBytes += b;
+          if (s.framesDecoded != null) decoded = s.framesDecoded;
+        } else {
+          otherRtpBytes += b;
+        }
       }
     }
     let line =
-      `${label} transport.getStats: inbound-rtp 合计 bytes≈${bytes}` +
-      (decoded != null ? ` framesDecoded=${decoded}` : '');
-    if (bytes > 2000 && (decoded === 0 || decoded === undefined)) {
+      `${label} transport.getStats: video-bytes≈${videoBytes}` +
+      (otherRtpBytes > 0 ? ` 其它inbound-rtp≈${otherRtpBytes}` : '') +
+      (decoded != null ? ` framesDecoded=${decoded}` : ' framesDecoded=(无统计)');
+    if (videoBytes > 2000 && (decoded === 0 || decoded === undefined)) {
+      if (String(negotiatedMime).includes('VP8')) {
+        line +=
+          ' → 已协商 VP8 仍无帧：几乎总是宿主机还在用 H264 FFmpeg。请停掉旧 ffmpeg 后只跑 ffmpeg-ingest-vp8.sh（或 run-c1，且 docker 日志须打印 vp8 脚本）。';
+      } else {
+        line +=
+          ' → 有视频流量但无解码帧：可试服务端 MEDIASOUP_INGEST_CODEC=vp8 + 宿主机 vp8 FFmpeg，见 README。';
+      }
+    } else if (videoBytes < 500 && otherRtpBytes > 2000) {
       line +=
-        ' → 有流量但无解码帧：多为 H264 与浏览器不兼容，服务端设 MEDIASOUP_INGEST_CODEC=vp8 后重建容器，宿主机跑 run-c1-ffmpeg-ingest.sh';
+        ' → video-bytes 很低但其它 RTP 有量：可能统计未标 kind=video，或 SFU 未转发到本路 video consumer。';
     }
     log(line);
   } catch (e) {
@@ -263,7 +284,9 @@ async function consumeIfViewer(producerId) {
     `远端协商编码: ${vcodec?.mimeType || '?'} PT=${vcodec?.payloadType ?? '?'}` +
       (String(vcodec?.mimeType || '').includes('H264')
         ? '（若一直 framesDecoded=0，请改用 VP8 ingest）'
-        : ''),
+        : String(vcodec?.mimeType || '').includes('VP8')
+          ? '（framesDecoded=0 时：宿主机必须跑 ffmpeg-ingest-vp8.sh，禁止仍用 h264 推流）'
+          : ''),
   );
   log('提示：[1s]/[3s] 诊断；video 尺寸仅在 2s / 6s 各打一行，减少刷屏。');
   // unmute 可能在绑定监听器之前就触发，必须在同一轮后补一次 play
@@ -310,8 +333,15 @@ async function consumeIfViewer(producerId) {
       `[6s] 远端 video: ${remoteVideo.videoWidth}x${remoteVideo.videoHeight} readyState=${remoteVideo.readyState}`,
     );
   }, 6000);
-  setTimeout(() => logRecvDiagnostics('[1s]', consumer, recvTransport, sawRemoteUnmuteRef), 1000);
-  setTimeout(() => logRecvDiagnostics('[3s]', consumer, recvTransport, sawRemoteUnmuteRef), 3000);
+  const negotiatedMime = vcodec?.mimeType || '';
+  setTimeout(
+    () => logRecvDiagnostics('[1s]', consumer, recvTransport, sawRemoteUnmuteRef, negotiatedMime),
+    1000,
+  );
+  setTimeout(
+    () => logRecvDiagnostics('[3s]', consumer, recvTransport, sawRemoteUnmuteRef, negotiatedMime),
+    3000,
+  );
 }
 
 document.getElementById('btnPublish').addEventListener('click', async () => {

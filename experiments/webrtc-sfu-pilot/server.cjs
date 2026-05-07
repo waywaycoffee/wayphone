@@ -12,7 +12,7 @@ const HTTP_LISTEN_HOST = process.env.HTTP_LISTEN_HOST || '0.0.0.0';
 const RTC_MIN_PORT = Number(process.env.MEDIASOUP_RTC_MIN_PORT || 40000);
 const RTC_MAX_PORT = Number(process.env.MEDIASOUP_RTC_MAX_PORT || 49999);
 /** 与前端/镜像一致；`curl http://<EIP>:3000/__pilot_version` 可验证是否已部署新镜像（与浏览器缓存无关） */
-const PILOT_VERSION = process.env.PILOT_VERSION || 'pilot-20260207';
+const PILOT_VERSION = process.env.PILOT_VERSION || 'pilot-20260207b';
 
 function listenIpConfig() {
   const announcedIp = process.env.MEDIASOUP_ANNOUNCED_IP;
@@ -143,6 +143,11 @@ async function setupPlainIngest({ router, peers, ingestCtx, broadcastFn }) {
   );
   console.log('mediasoup RTP tuple:', `${lip}:${ffmpegPort}`);
   console.log(`手动（或排错）: bash scripts/${ffmpegScript} ${ffmpegHost} ${ffmpegPort}`);
+  if (useVp8) {
+    console.warn(
+      'Layer C1: 已为 VP8 ingest — 宿主机必须运行 ffmpeg-ingest-vp8.sh（或 run-c1 解析到 vp8）。若仍跑 h264 脚本，浏览器会协商 VP8 但解不出帧（framesDecoded=0）。',
+    );
+  }
   console.log(
     `  PT=${RTP_PAYLOAD_TYPE} SSRC=${RTP_SSRC} (env MEDIASOUP_INGEST_PT / MEDIASOUP_INGEST_SSRC)`,
   );
