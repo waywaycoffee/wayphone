@@ -97,6 +97,17 @@
 
 以下假设：**ECS 上 Redroid 已起**（`docker ps` 可见 `cloudphone-redroid`），且 compose 里 **5555 绑在 `127.0.0.1`**（本仓库默认），**不对公网开放 ADB**。
 
+### 5.0 在 ECS 上一键自检（推荐先做）
+
+仓库根目录执行（会读 `.env` 里的 **`REDROID_HOST_PORT`**，未设置则默认 **5555**）：
+
+```bash
+cd /opt/wayphone
+bash scripts/layer-c0-redroid-on-ecs.sh
+```
+
+通过后会 **直接打印** 你在 Mac 上要用的 `ssh` / `adb` / `scrcpy` 命令模板；失败时按脚本提示看容器与 `ss` 监听。
+
 ### 5.1 在 ECS 上确认 ADB 端口（可选）
 
 ```bash
@@ -144,9 +155,12 @@ scrcpy -s 127.0.0.1:5555 --max-size=720 --video-bit-rate=4M
 
 ### 5.6 验收清单（C0 = 通过）
 
+- [ ] **`layer-c0-redroid-on-ecs.sh`** 在 ECS 上为 **exit 0**  
 - [ ] `adb devices` 为 **device** 而非 offline  
 - [ ] scrcpy 窗口能 **连续** 看到 Launcher / 已装 App，操作可接受  
 - [ ] 断开后重连 **可重复**（再执行 `adb connect` + `scrcpy`）
+
+**C0 通过后**：在仓库里打一个 tag 或笔记记录日期即可；**与 Layer B（SFU）并行存在**，互不要求同一进程。
 
 ### 5.7 常见问题
 

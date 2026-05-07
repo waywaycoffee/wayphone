@@ -30,4 +30,5 @@ else
 fi
 
 echo "=== done ==="
-echo "C0: docs/layer-c-roadmap.md §5 (scrcpy + SSH + adb)"
+echo "C0 ECS: bash scripts/layer-c0-redroid-on-ecs.sh (from repo root)"
+echo "C0 doc: docs/layer-c-roadmap.md §5"
