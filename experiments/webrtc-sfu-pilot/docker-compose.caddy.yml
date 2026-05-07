@@ -1,0 +1,32 @@
+# 与 webrtc-sfu-pilot 主 compose 并行使用：仅提供 80/443 反向代理到宿主机上的 Node。
+# 前置：宿主机已 docker compose up -d 起好 webrtc（host 网络监听 127.0.0.1:PORT）。
+#
+# 示例（nip.io 免买域名，把 IP 的点换成横杠）：
+#   export CADDY_DOMAIN=8-163-51-24.nip.io
+#   export UPSTREAM_PORT=3000
+#   docker compose -f docker-compose.caddy.yml up -d
+#
+# 安全组须放行 TCP 80、443（Let’s Encrypt 校验与 HTTPS）。
+
+name: webrtc-sfu-caddy
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      CADDY_DOMAIN: ${CADDY_DOMAIN:?set CADDY_DOMAIN e.g. 8-163-51-24.nip.io}
+      UPSTREAM_PORT: ${UPSTREAM_PORT:-3000}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  caddy_data:
+  caddy_config:
