@@ -1,7 +1,7 @@
 import { Device } from './mediasoup-client.esm.js';
 
 /** 与 index.html 中 app.mjs 查询参数同步 bump，便于确认已加载新前端 */
-const FRONTEND_BUILD = 'pilot-20260207b';
+const FRONTEND_BUILD = 'pilot-20260207c';
 
 const logEl = document.getElementById('log');
 const localVideo = document.getElementById('localVideo');
@@ -211,7 +211,7 @@ async function logRecvDiagnostics(
     if (videoBytes > 2000 && (decoded === 0 || decoded === undefined)) {
       if (String(negotiatedMime).includes('VP8')) {
         line +=
-          ' → 已协商 VP8 仍无帧：几乎总是宿主机还在用 H264 FFmpeg。请停掉旧 ffmpeg 后只跑 ffmpeg-ingest-vp8.sh（或 run-c1，且 docker 日志须打印 vp8 脚本）。';
+          ' → VP8 仍无帧：① 同机请用 127.0.0.1:端口 推流（run-c1 默认已改；勿长期打本机 EIP）② 停掉旧 ffmpeg 后只跑 vp8 脚本。';
       } else {
         line +=
           ' → 有视频流量但无解码帧：可试服务端 MEDIASOUP_INGEST_CODEC=vp8 + 宿主机 vp8 FFmpeg，见 README。';

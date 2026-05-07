@@ -53,7 +53,7 @@ docker compose logs --tail=30
 **推荐（默认）**：在 **与 Docker 同一台 ECS 宿主机**、**本目录**执行 **`bash scripts/run-c1-ffmpeg-ingest.sh`**（或 **`npm run c1:ingest`**）。脚本会读取 **`docker compose logs`**（及容器 `docker logs`），解析当次 **`ffmpeg-ingest-h264.sh <host> <port>`** 或 **`mediasoup RTP tuple:`**，再启动 FFmpeg，**避免容器重启后端口变化还要手抄**。  
 **备选**：终端里若已打印 **`bash scripts/ffmpeg-ingest-h264.sh …`** 或 **`ffmpeg-ingest-vp8.sh`**，也可原样执行（排错、或无 compose 时）。浏览器打开页面后 **只点「仅观看」**。说明：**`docs/layer-c-roadmap.md`** §C1.1。
 
-**黑屏但日志里 `transport.getStats` 有 bytes、`framesDecoded=0`**：多为 FFmpeg→H264→Chrome 解码不兼容。在 compose 里设 **`MEDIASOUP_INGEST_CODEC=vp8`**，**重建并重启容器** 后，宿主机用同一套 **`run-c1-ffmpeg-ingest.sh`**（日志会提示 `ffmpeg-ingest-vp8.sh`）；ECS 的 **`ffmpeg` 需带 libvpx**（一般 `apt install ffmpeg` 即可）。
+**黑屏但日志里 `transport.getStats` 有 bytes、`framesDecoded=0`**：多为 FFmpeg→H264→Chrome 解码不兼容；可设 **`MEDIASOUP_INGEST_CODEC=vp8`** 并 **`run-c1-ffmpeg-ingest.sh`**。**同 ECS 宿主机**上 FFmpeg 请打 **`127.0.0.1:端口`**（脚本默认如此），勿长期用「本机 EIP」——云上 **UDP hairpin** 常导致 SFU 收不到 RTP。ECS 的 **`ffmpeg` 需带 libvpx**（一般 `apt install ffmpeg` 即可）。
 
 ### 公网 HTTPS 一条链接（可发摄像头）
 

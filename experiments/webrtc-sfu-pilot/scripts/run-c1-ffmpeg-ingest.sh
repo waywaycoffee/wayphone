@@ -57,6 +57,14 @@ if [[ "${HOST}" == "0.0.0.0" ]]; then
   HOST="127.0.0.1"
 fi
 
+# 与 Docker host 网络 + mediasoup 绑 0.0.0.0 时，FFmpeg 发往「本机 EIP」常因 UDP hairpin 丢包，SFU 收不到真实媒体（浏览器仍可能有一点 SRTP 字节但 framesDecoded=0）。
+# 默认同机用 127.0.0.1；FFmpeg 在另一台机器上时再：export C1_USE_LOOPBACK=0
+USE_LOOPBACK=${C1_USE_LOOPBACK:-1}
+if [[ "${USE_LOOPBACK}" == "1" ]] && [[ "${HOST}" != "127.0.0.1" ]]; then
+  echo "提示: RTP 改为 127.0.0.1:${PORT}（原日志 host=${HOST}，避免本机→EIP UDP hairpin）。跨机 ingest 请 C1_USE_LOOPBACK=0" >&2
+  HOST="127.0.0.1"
+fi
+
 echo "解析到 RTP 目标: ${HOST}:${PORT}（脚本: ${SCRIPT_BASENAME}）"
 chmod +x "${REPO_DIR}/scripts/ffmpeg-ingest-h264.sh" "${REPO_DIR}/scripts/ffmpeg-ingest-vp8.sh"
 exec bash "${REPO_DIR}/scripts/${SCRIPT_BASENAME}" "${HOST}" "${PORT}"

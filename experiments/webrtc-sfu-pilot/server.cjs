@@ -12,7 +12,7 @@ const HTTP_LISTEN_HOST = process.env.HTTP_LISTEN_HOST || '0.0.0.0';
 const RTC_MIN_PORT = Number(process.env.MEDIASOUP_RTC_MIN_PORT || 40000);
 const RTC_MAX_PORT = Number(process.env.MEDIASOUP_RTC_MAX_PORT || 49999);
 /** 与前端/镜像一致；`curl http://<EIP>:3000/__pilot_version` 可验证是否已部署新镜像（与浏览器缓存无关） */
-const PILOT_VERSION = process.env.PILOT_VERSION || 'pilot-20260207b';
+const PILOT_VERSION = process.env.PILOT_VERSION || 'pilot-20260207c';
 
 function listenIpConfig() {
   const announcedIp = process.env.MEDIASOUP_ANNOUNCED_IP;
@@ -142,7 +142,12 @@ async function setupPlainIngest({ router, peers, ingestCtx, broadcastFn }) {
     '推荐: bash scripts/run-c1-ffmpeg-ingest.sh  # 从 docker compose logs 解析 host/port 并启动 FFmpeg',
   );
   console.log('mediasoup RTP tuple:', `${lip}:${ffmpegPort}`);
-  console.log(`手动（或排错）: bash scripts/${ffmpegScript} ${ffmpegHost} ${ffmpegPort}`);
+  console.log(
+    `同机 ingest（推荐）: bash scripts/${ffmpegScript} 127.0.0.1 ${ffmpegPort}  # 避免 FFmpeg→本机 EIP 的 UDP hairpin 丢包`,
+  );
+  console.log(
+    `跨机 / 已确认 hairpin 可用: bash scripts/${ffmpegScript} ${ffmpegHost} ${ffmpegPort}`,
+  );
   if (useVp8) {
     console.warn(
       'Layer C1: 已为 VP8 ingest — 宿主机必须运行 ffmpeg-ingest-vp8.sh（或 run-c1 解析到 vp8）。若仍跑 h264 脚本，浏览器会协商 VP8 但解不出帧（framesDecoded=0）。',
