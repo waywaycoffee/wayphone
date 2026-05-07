@@ -138,6 +138,32 @@ docker info | grep -A5 'Registry Mirrors'
 - 若 **`/etc/docker/daemon.json` 已存在其它键**（如 `log-driver`），**不要**用 `tee` 整文件覆盖；用编辑器 **合并** `registry-mirrors` 数组。  
 - 生效后重试 **`docker compose pull`** / **`docker pull`**。
 
+#### 2.4.1 加速器已配置但仍 `403 Forbidden`（`docker.io/library/...`）
+
+部分账号下，个人版加速器对 **Docker Hub 上某些镜像**（如 `hello-world`、`node:20-bookworm`）会返回 **403**，`docker compose build` 卡在 **`FROM node:...`** 即属此类。
+
+**处理（任选或组合）：**
+
+1. **`registry-mirrors` 写多条**，Docker 会依次尝试（第一条仍用你的阿里云地址；第二条请换成你信任的公开 Hub 镜像源，以下仅为格式示例）：  
+
+```bash
+sudo tee /etc/docker/daemon.json <<-'EOF'
+{
+  "registry-mirrors": [
+    "https://xxxxxxxx.mirror.aliyuncs.com",
+    "https://docker.1ms.run"
+  ]
+}
+EOF
+sudo systemctl daemon-reload && sudo systemctl restart docker
+```
+
+将 **`xxxxxxxx`** 换成你的专属前缀；**第二条** 若不可用可换其它公开镜像文档中提供的地址，或咨询你所在网络环境可用的 Hub 代理。
+
+2. **ACR 控制台**：确认 **镜像加速 / 访问凭证** 是否要求 **`docker login`** 后再拉 Hub；按页面说明对 **Registry 地址** 登录（以控制台为准）。
+
+3. **临时验证**：备份 `daemon.json` 后 **暂时去掉 `registry-mirrors`**，重启 Docker，再 **`docker pull node:20-bookworm`**。若直连可拉，说明问题在加速器策略，可长期用 **多 mirror** 或 **ACR 镜像同步** 自建 `node` 基础镜像。
+
 ---
 
 
