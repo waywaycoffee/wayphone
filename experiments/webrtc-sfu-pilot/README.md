@@ -2,7 +2,7 @@
 
 **Layer A + B**：mediasoup **Worker / Router** + **WebSocket 信令** + 浏览器 **`mediasoup-client`**，实现 **摄像头 → SFU → 另一 Tab / 另一台浏览器** 的最小闭环。
 
-**不是**：Redroid / 安卓画面采集、触控回注、商用房间与鉴权（见 `docs/webrtc-sfu-pilot.md` 的 Layer C）。
+**不是**：Redroid / 安卓画面采集、触控回注、商用房间与鉴权（**Layer C** 见仓库根目录 **`docs/layer-c-roadmap.md`**）。
 
 ## 本地运行
 
@@ -28,6 +28,19 @@ npm start
 export MEDIASOUP_ANNOUNCED_IP=192.168.x.x
 docker compose up --build
 ```
+
+国内镜像对 **`library/node`** 出现 **403 / not found** 时，可换基础镜像再构建（示例）：
+
+```bash
+export NODE_IMAGE=docker.m.daocloud.io/library/node:20-bookworm
+docker compose up --build
+```
+
+详见 **`docs/aliyun-ecs-pilot.md` §2.4.1**。
+
+### 公网 HTTPS 一条链接（可发摄像头）
+
+不依赖 SSH 转发时：用 **Caddy** 在 443 上自动证书，浏览器打开 `https://你的域名/`。仓库内 **`docker-compose.caddy.yml`** + **`Caddyfile`**；**`MEDIASOUP_ANNOUNCED_IP` 仍填 EIP**。完整步骤：**`docs/aliyun-ecs-pilot.md` §4.2**。
 
 若已 `cd` 本目录仍出现 **`no configuration file provided`**（常见于 **Snap** 安装的 Docker），请用：
 

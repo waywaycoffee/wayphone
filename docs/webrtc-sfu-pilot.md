@@ -46,9 +46,10 @@
    - **WebSocket 信令** + 浏览器 **`mediasoup-client`**：`sendTransport` / `recvTransport`、`produce` / `consume`。  
    - **验证方式**：同一台机开 **两个浏览器 Tab**（或两台设备同一局域网）：Tab1 点「发布摄像头」，Tab2 点「仅观看」，应能看到经 SFU 转发的画面（**不含** Redroid / 安卓采集）。  
 3. **Layer C（安卓画面 → WebRTC）**  
-   - 这是工作量最大的一层：在 **Linux + Redroid** 或 **AVD/真机** 上，用 **GStreamer / 定制 native / 或商业方案** 把编码后的轨送进 SFU；**触控回注**还要走 `adb`/minicap 同类通道或应用内协议，与纯 WebRTC 不是同一行命令能搞定。  
+   - 这是工作量最大的一层：在 **Linux + Redroid** 或 **AVD/真机** 上，把 **编码后的媒体** 送进 **mediasoup**（常见演进：**PlainTransport 收 RTP**、侧车 WebRTC、或安卓内原生 WebRTC）；**触控回注**走 **`adb` / 应用内协议**，与 RTP 链解耦。  
+   - **可执行路线图与里程碑（C0→C1→C2）**：**[docs/layer-c-roadmap.md](layer-c-roadmap.md)**；前置自检：`bash scripts/check-layer-c-prereqs.sh`。  
 
-**WebRTC 路线**用于验证 SFU 与浏览器媒体面；与 **Redroid 云安卓**（根目录 compose）并行规划；**Layer C**（安卓画面进 SFU）仍待单独设计。
+**WebRTC 路线**用于验证 SFU 与浏览器媒体面；与 **Redroid 云安卓**（根目录 compose）并行规划；**Layer C** 按 **`layer-c-roadmap.md`** 分阶段落地。
 
 ## 3. 在本仓库里怎么跑 Layer A + B
 
@@ -79,7 +80,7 @@ ssh -N -L 3000:127.0.0.1:3000 root@你的EIP
 
 **信令已通、日志显示已 consume 仍黑屏**：mediasoup 建议在服务端 **先 `consume({ paused: true })`，再在浏览器 `recvTransport.consume` 完成后 `consumer.resume()`**。本仓库试点已实现 **`resumeConsumer` RPC**；远端 `<video>` 使用 **`muted`** 以利于自动播放。部署后请 **`docker compose up -d --build`** 再测。
 
-**正式环境**：为域名配置 **HTTPS**（例如 Caddy / Nginx + Let’s Encrypt），用 `https://你的域名/` 访问。
+**正式环境 / 公网一条链接**：为域名（或 **nip.io**：`8-163-51-24.nip.io` 对应 EIP `8.163.51.24`）配置 **HTTPS**。本仓库试点目录已提供 **Caddy** 编排：**`experiments/webrtc-sfu-pilot/Caddyfile`** + **`docker-compose.caddy.yml`**，步骤见 **`docs/aliyun-ecs-pilot.md` §4.2**。
 
 一键 smoke（仓库根目录，**自动选空闲端口**；会按需 `npm install` / `build:client`）：
 
@@ -111,7 +112,7 @@ Compose 使用 **`network_mode: host`**（Linux 常见做法，便于 mediasoup 
 
 - **Redroid / 云机部署**：以根目录 `README.md`、`docker-compose.yml` 与 **`docs/redroid-notes.md`** 为准（**Linux**）。  
 - **掌厅 / adb**：官方 APK + `adb`；包名与深链备忘见 **`docs/redroid-notes.md`**。  
-- **WebRTC SFU**：以本文档 + `experiments/webrtc-sfu-pilot` 为起点；**Layer B** 信令与浏览器示例已在试点目录内，**Layer C**（安卓画面进 SFU）仍待单独设计。
+- **WebRTC SFU**：以本文档 + `experiments/webrtc-sfu-pilot` 为起点；**Layer B** 已在试点目录内；**Layer C** 见 **[docs/layer-c-roadmap.md](layer-c-roadmap.md)**。
 
 ## 5. 推荐阅读顺序
 

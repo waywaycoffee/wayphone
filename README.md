@@ -225,6 +225,7 @@ ssh -N -L 6080:127.0.0.1:6080 你的用户@ECS公网IP
 - **x86 本地 Linux（家用/机房，与 ECS 同一套 compose）**：`docs/local-x86-linux.md`  
 - **Redroid / ADB / 掌厅备忘**：`docs/redroid-notes.md`  
 - **WebRTC SFU 试点（mediasoup）**：`docs/webrtc-sfu-pilot.md`  
+- **Layer C（安卓画面进 SFU）路线图**：`docs/layer-c-roadmap.md`  
 - **Linux 云机防火墙与容量口径**：`docs/linux-cloud-lab.md`
 
 ## 参考链接
