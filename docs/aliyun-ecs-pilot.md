@@ -108,20 +108,35 @@ docker compose version
 
 ### 2.4 国内 ECS 拉 Docker Hub 超时（`registry-1.docker.io … i/o timeout`）
 
-阿里云等国内线路访问 **Docker Hub** 常不稳定。在 ECS 上为 Docker 配置 **镜像加速**（推荐在控制台 **容器镜像服务 ACR → 镜像工具 → 镜像加速器** 复制专属地址），然后：
+阿里云等国内线路访问 **Docker Hub** 常不稳定。为 Docker 配置 **镜像加速器**（控制台与 ECS 命令如下，便于长期照做）。
+
+#### 控制台在哪里、复制什么
+
+1. 登录 **阿里云控制台** → 打开 **容器镜像服务 ACR**。  
+2. 左侧 **镜像工具** → **镜像加速器**。  
+3. 页面 **「加速器地址」** 会显示一条 **专属 URL**（形如 `https://xxxxxxxx.mirror.aliyuncs.com`，**每账号不同**，勿照抄他人）。  
+4. 页面下方 **操作系统** 选 **Ubuntu**，可按官方给出的命令操作（与下面 ECS 命令等价）。
+
+**说明**：加速器仅加速 **Docker Hub 等配置的仓库拉取**；控制台顶部提示：若仍慢，可能与运营商网络有关，可考虑 **ACR 自建镜像 / 海外同步** 等（见 ACR 文档）。
+
+#### 在 ECS 上配置（Docker Engine ≥ 1.10；推荐已装 APT 官方 Docker，见 §2.1）
+
+将 **`https://xxxxxxxx.mirror.aliyuncs.com`** 换成你在 **镜像加速器** 页复制的 **整段地址**：
 
 ```bash
 sudo mkdir -p /etc/docker
-sudo tee /etc/docker/daemon.json <<'EOF'
+sudo tee /etc/docker/daemon.json <<-'EOF'
 {
-  "registry-mirrors": ["https://YOUR_MIRROR.aliyuncs.com"]
+  "registry-mirrors": ["https://xxxxxxxx.mirror.aliyuncs.com"]
 }
 EOF
 sudo systemctl daemon-reload
 sudo systemctl restart docker
+docker info | grep -A5 'Registry Mirrors'
 ```
 
-将 **`YOUR_MIRROR.aliyuncs.com`** 换成控制台给出的加速器域名；若已有其它 `daemon.json` 配置，请手工合并 **`registry-mirrors`** 数组而非覆盖整文件。配置后重试 **`docker compose pull`**。
+- 若 **`/etc/docker/daemon.json` 已存在其它键**（如 `log-driver`），**不要**用 `tee` 整文件覆盖；用编辑器 **合并** `registry-mirrors` 数组。  
+- 生效后重试 **`docker compose pull`** / **`docker pull`**。
 
 ---
 
