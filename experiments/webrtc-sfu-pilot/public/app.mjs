@@ -1,7 +1,7 @@
 import { Device } from './mediasoup-client.esm.js';
 
 /** 与 index.html 中 app.mjs 查询参数同步 bump，便于确认已加载新前端 */
-const FRONTEND_BUILD = 'pilot-20260207i';
+const FRONTEND_BUILD = 'pilot-20260207j';
 
 const logEl = document.getElementById('log');
 const localVideo = document.getElementById('localVideo');

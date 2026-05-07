@@ -12,7 +12,7 @@ const HTTP_LISTEN_HOST = process.env.HTTP_LISTEN_HOST || '0.0.0.0';
 const RTC_MIN_PORT = Number(process.env.MEDIASOUP_RTC_MIN_PORT || 40000);
 const RTC_MAX_PORT = Number(process.env.MEDIASOUP_RTC_MAX_PORT || 49999);
 /** 与前端/镜像一致；`curl http://<EIP>:3000/__pilot_version` 可验证是否已部署新镜像（与浏览器缓存无关） */
-const PILOT_VERSION = process.env.PILOT_VERSION || 'pilot-20260207i';
+const PILOT_VERSION = process.env.PILOT_VERSION || 'pilot-20260207j';
 
 function listenIpConfig() {
   const announcedIp = process.env.MEDIASOUP_ANNOUNCED_IP;
@@ -69,10 +69,26 @@ function listProducerSummaries(peers, ingestCtx) {
 async function setupPlainIngest({ router, peers, ingestCtx, broadcastFn }) {
   if (process.env.MEDIASOUP_INGEST_TEST !== '1') return;
 
-  const RTP_PAYLOAD_TYPE = Number(process.env.MEDIASOUP_INGEST_PT || 96);
   const RTP_SSRC = Number(process.env.MEDIASOUP_INGEST_SSRC || 111222333);
   const ingestCodec = (process.env.MEDIASOUP_INGEST_CODEC || 'h264').toLowerCase();
   const useVp8 = ingestCodec === 'vp8';
+  /** Router 同时注册 VP8+H264 时，VP8 的 preferredPayloadType 常为 101 而非 96；与 FFmpeg -payload_type 不一致会出现 bytesReceived 很大但 rtpBytesReceived=0 */
+  const ingestVideoCap = (router.rtpCapabilities.codecs || []).find((c) => {
+    if (c.kind !== 'video') return false;
+    const m = c.mimeType.toLowerCase();
+    if (useVp8) return m === 'video/vp8';
+    return m === 'video/h264';
+  });
+  const RTP_PAYLOAD_TYPE = Number(
+    process.env.MEDIASOUP_INGEST_PT ||
+      (ingestVideoCap ? ingestVideoCap.preferredPayloadType : 96),
+  );
+  if (!ingestVideoCap) {
+    console.error(
+      'Layer C1: router.rtpCapabilities 中找不到与 MEDIASOUP_INGEST_CODEC 匹配的视频 codec，无法创建 ingest',
+    );
+    return;
+  }
   /** FFmpeg 发送端绑定端口（须与 scripts/ffmpeg-ingest-*.sh 的 -localport 一致）；勿落在 MEDIASOUP_RTC_* 范围内以免撞 WebRTC 端口池 */
   const ffmpegSrcPort = Number(process.env.MEDIASOUP_INGEST_FFMPEG_LOCAL_PORT || 35500);
   const ffmpegSrcIp = process.env.MEDIASOUP_INGEST_FFMPEG_IP || '127.0.0.1';
@@ -88,25 +104,13 @@ async function setupPlainIngest({ router, peers, ingestCtx, broadcastFn }) {
   ingestCtx.plainTransport = plainTransport;
   console.log('Layer C1 PlainTransport listenInfo:', JSON.stringify(li));
 
-  const videoCodec = useVp8
-    ? {
-        mimeType: 'video/VP8',
-        payloadType: RTP_PAYLOAD_TYPE,
-        clockRate: 90000,
-        parameters: {},
-        rtcpFeedback: [],
-      }
-    : {
-        mimeType: 'video/H264',
-        payloadType: RTP_PAYLOAD_TYPE,
-        clockRate: 90000,
-        parameters: {
-          'packetization-mode': 1,
-          'profile-level-id': '42e01f',
-          'level-asymmetry-allowed': 1,
-        },
-        rtcpFeedback: [],
-      };
+  const videoCodec = {
+    mimeType: ingestVideoCap.mimeType,
+    payloadType: RTP_PAYLOAD_TYPE,
+    clockRate: ingestVideoCap.clockRate,
+    parameters: ingestVideoCap.parameters || {},
+    rtcpFeedback: ingestVideoCap.rtcpFeedback || [],
+  };
 
   const producer = await plainTransport.produce({
     kind: 'video',
@@ -149,6 +153,9 @@ async function setupPlainIngest({ router, peers, ingestCtx, broadcastFn }) {
   console.log(
     'MEDIASOUP_INGEST_CODEC:',
     useVp8 ? 'vp8（若 H264 黑屏/framesDecoded=0 可改用此项）' : 'h264（默认）',
+  );
+  console.log(
+    `Layer C1: ingest PT=${RTP_PAYLOAD_TYPE}（须与 FFmpeg -payload_type 一致；由 Router preferredPayloadType 推导，勿再固定写 96）`,
   );
   console.log(
     '推荐: bash scripts/run-c1-ffmpeg-ingest.sh  # 从 docker compose logs 解析 host/port 并启动 FFmpeg',

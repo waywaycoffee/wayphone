@@ -81,5 +81,11 @@ fi
 echo "解析到 RTP 目标: ${HOST}:${PORT}（脚本: ${SCRIPT_BASENAME}）"
 LP=${MEDIASOUP_INGEST_FFMPEG_LOCAL_PORT:-35500}
 echo "提示: FFmpeg 固定源端口=${LP}（与容器 MEDIASOUP_INGEST_FFMPEG_LOCAL_PORT 一致；改了 compose 请 export 同名变量）" >&2
+# 日志行：  PT=101 SSRC=111222333 — PT 须与 mediasoup Router 一致（多 video codec 时常为 101 而非 96）
+PT_FROM_LOG=$(echo "${STRIPPED}" | grep -oE 'PT=[0-9]+[[:space:]]+SSRC=' | tail -n1 | sed -n 's/PT=\([0-9]*\).*/\1/p')
+if [[ -n "${PT_FROM_LOG}" ]]; then
+  export INGEST_PT="${PT_FROM_LOG}"
+  echo "提示: 从日志解析 INGEST_PT=${INGEST_PT}（传给 ffmpeg-ingest；勿再用默认 96 除非日志如此）" >&2
+fi
 chmod +x "${REPO_DIR}/scripts/ffmpeg-ingest-h264.sh" "${REPO_DIR}/scripts/ffmpeg-ingest-vp8.sh"
 exec bash "${REPO_DIR}/scripts/${SCRIPT_BASENAME}" "${HOST}" "${PORT}"
