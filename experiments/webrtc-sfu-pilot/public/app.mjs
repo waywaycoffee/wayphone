@@ -1,7 +1,7 @@
 import { Device } from './mediasoup-client.esm.js';
 
 /** 与 index.html 中 app.mjs 查询参数同步 bump，便于确认已加载新前端 */
-const FRONTEND_BUILD = 'pilot-20260207h';
+const FRONTEND_BUILD = 'pilot-20260207i';
 
 const logEl = document.getElementById('log');
 const localVideo = document.getElementById('localVideo');
@@ -212,7 +212,7 @@ async function logRecvDiagnostics(
     if (videoBytes > 2000 && (decoded === 0 || decoded === undefined)) {
       if (String(negotiatedMime).includes('VP8')) {
         line +=
-          ' → VP8 仍无帧：① 127.0.0.1:端口 + vp8 ingest ② SFU：PlainTransport.connect + FFmpeg -localport（默认 35500）③ 见下行「服务端 __pilot_version」须 ≥20260207f；若前端构建仍是 c/g 旧字：ECS docker compose build --no-cache。';
+          ' → VP8 仍无帧：① run-c1 + vp8 ② 服务端日志 grep「PlainTransport stats|FFmpeg→SFU」— rtpBytesReceived 须涨 ③ bytes 卡~10k：多为 ingest 未进 SFU 或 UDP 40000–49999/安全组。';
       } else {
         line +=
           ' → 有视频流量但无解码帧：可试服务端 MEDIASOUP_INGEST_CODEC=vp8 + 宿主机 vp8 FFmpeg，见 README。';
@@ -411,7 +411,9 @@ function connectWs() {
     void fetch(`/__pilot_version?t=${Date.now()}`, { cache: 'no-store' })
       .then((r) => r.text())
       .then((t) =>
-        log(`服务端 __pilot_version: ${t.trim()}（应与「前端构建」同版本；不一致则缓存或镜像未重建）`),
+        log(
+          `服务端 __pilot_version: ${t.trim()}（与「前端构建」差一个字母 = 只重建了容器未重建镜像时 COPY 的 public；ECS: docker compose build --no-cache）`,
+        ),
       )
       .catch((e) => log(`__pilot_version 拉取失败: ${e.message}`));
     attachWsHandlers();
