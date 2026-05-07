@@ -22,15 +22,14 @@
 
 ### C0 — 先「看得见云机」（不进 SFU）
 
-**目标**：任意方案在浏览器里看到 **实时或近实时** 的安卓画面（画质/延迟先不苛求）。
+**目标**：在你自己的电脑上 **稳定看到 Redroid 的实时画面**（画质/延迟先不苛求）。**不要求**经过 mediasoup。
 
 **常见做法（择一 PoC）**：
 
-- **scrcpy**（本机显示，或配合 Web 封装项目自行评估）  
-- **minicap / scrcpy 系 Web 方案**（社区方案多，需自行安全审计）  
-- 有 **KVM** 时 **docker-android + noVNC**（本仓库 `docker-compose.emulator.yml`）——与 Redroid 路线不同，但可验证「远控画面」产品形态  
+- **scrcpy（推荐）**：本机弹出 **桌面窗口** 显示云机画面；依赖 ADB，与 Layer B 完全独立。  
+- **浏览器里看画面**：可选 **noVNC**（需 **KVM** + `docker-compose.emulator.yml`，与 Redroid 路线不同）或 **自行评估** 的 Web 封装 / minicap 系项目（安全与维护需自负）。  
 
-**验收**：不经过 mediasoup，也能稳定看到 Redroid 桌面/应用。**此步验证 ADB、编码、网络，但不等于 Layer C 完成。**
+**验收**：不经过 mediasoup，也能稳定看到 Redroid 桌面/应用。**详细命令见下文 §5。** C0 完成只表示 **采集链路在工程上可行**，不等于 Layer C 全部完成。
 
 ---
 
@@ -91,3 +90,73 @@
 3. 若团队更熟 **GStreamer**，优先以 **GStreamer → RTP → PlainTransport** 写设计评审，再写代码。
 
 更细的 mediasoup API 请以 [mediasoup 文档](https://mediasoup.org/documentation/v3/mediasoup/api/) 与 **PlainTransport** 章节为准（版本升级时注意 API 差异）。
+
+---
+
+## 5. C0 实操：scrcpy + Redroid（推荐路径）
+
+以下假设：**ECS 上 Redroid 已起**（`docker ps` 可见 `cloudphone-redroid`），且 compose 里 **5555 绑在 `127.0.0.1`**（本仓库默认），**不对公网开放 ADB**。
+
+### 5.1 在 ECS 上确认 ADB 端口（可选）
+
+```bash
+ss -tlnp | grep 5555
+# 期望类似 127.0.0.1:5555
+```
+
+### 5.2 在你自己的电脑（Mac 示例）安装工具
+
+```bash
+brew install android-platform-tools scrcpy
+```
+
+（Linux 桌面：用发行版包管理器安装 `adb`、`scrcpy`，或从 [scrcpy 发布页](https://github.com/Genymobile/scrcpy/releases) 安装。）
+
+### 5.3 SSH 把远端 5555 转到本机
+
+**终端 A**（保持运行，把 `EIP` 与密钥路径换成你的）：
+
+```bash
+ssh -N -L 5555:127.0.0.1:5555 -i /path/to/miyao.pem root@EIP
+```
+
+### 5.4 连接 ADB 并起 scrcpy
+
+**终端 B**：
+
+```bash
+adb connect 127.0.0.1:5555
+adb devices
+# 应看到 127.0.0.1:5555 为 device
+
+scrcpy -s 127.0.0.1:5555
+```
+
+若有多台设备，**必须**带 **`-s 127.0.0.1:5555`**。
+
+### 5.5 Redroid 上常用降级参数（卡顿 / 花屏时试）
+
+```bash
+scrcpy -s 127.0.0.1:5555 --max-size=720 --video-bit-rate=4M
+```
+
+个别环境可试 **`--video-codec=h264`** 或 **`--render-driver=software`**（以当前 scrcpy 版本 `--help` 为准）。
+
+### 5.6 验收清单（C0 = 通过）
+
+- [ ] `adb devices` 为 **device** 而非 offline  
+- [ ] scrcpy 窗口能 **连续** 看到 Launcher / 已装 App，操作可接受  
+- [ ] 断开后重连 **可重复**（再执行 `adb connect` + `scrcpy`）
+
+### 5.7 常见问题
+
+| 现象 | 处理 |
+|------|------|
+| `adb` 只有 `no devices` | 检查 **终端 A** SSH 是否仍在线；ECS 上 Redroid 是否运行；端口是否为 **5555**。 |
+| `unauthorized` / `offline` | `adb kill-server` 后重新 `adb connect`；必要时重启 Redroid 容器。 |
+| scrcpy 立即退出 | 在 ECS 上 `docker logs cloudphone-redroid`；对照 **`docs/redroid-notes.md`**（binder、镜像标签）。 |
+| 只想在 **浏览器** 里看 | 走 **noVNC / docker-android**（需 KVM），或另选 Web 方案；**不在此文档承诺**具体镜像。 |
+
+### 5.8 C0 结束后
+
+进入 **C1**：把 **H264 RTP** 以 **PlainTransport** 等形式送入 **mediasoup**（见上文 **§1 C1**）；不要在未稳定 **编码与分辨率** 前过早改 SFU 信令。

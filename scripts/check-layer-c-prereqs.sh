@@ -30,4 +30,4 @@ else
 fi
 
 echo "=== done ==="
-echo "See docs/layer-c-roadmap.md for C0 → C1 → C2 milestones."
+echo "C0: docs/layer-c-roadmap.md §5 (scrcpy + SSH + adb)"
