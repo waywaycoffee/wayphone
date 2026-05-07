@@ -20,6 +20,19 @@ function listenIpConfig() {
   return [{ ip: '127.0.0.1' }];
 }
 
+/** mediasoup ≥3.14：PlainTransport 用 listenInfo，勿再用 listenIps */
+function plainTransportListenInfo() {
+  const announcedIp = process.env.MEDIASOUP_ANNOUNCED_IP;
+  if (announcedIp && announcedIp.length > 0) {
+    return {
+      protocol: 'udp',
+      ip: '0.0.0.0',
+      announcedAddress: announcedIp,
+    };
+  }
+  return { protocol: 'udp', ip: '127.0.0.1' };
+}
+
 function makeFindProducer(ingestCtx) {
   return function findProducer(peers, producerId) {
     if (
@@ -57,10 +70,11 @@ async function setupPlainIngest({ router, peers, ingestCtx, broadcastFn }) {
   const RTP_PAYLOAD_TYPE = Number(process.env.MEDIASOUP_INGEST_PT || 96);
   const RTP_SSRC = Number(process.env.MEDIASOUP_INGEST_SSRC || 111222333);
 
+  // comedia: FFmpeg 从临时 UDP 源端口发 RTP，首包后由 mediasoup 识别远端（见 PlainTransport 文档）
   const plainTransport = await router.createPlainTransport({
-    listenIps: listenIpConfig(),
+    listenInfo: plainTransportListenInfo(),
     rtcpMux: true,
-    comedia: false,
+    comedia: true,
   });
 
   ingestCtx.plainTransport = plainTransport;
