@@ -20,12 +20,106 @@ function listenIpConfig() {
   return [{ ip: '127.0.0.1' }];
 }
 
-function findProducer(peers, producerId) {
-  for (const peer of peers.values()) {
-    const p = peer.producers.get(producerId);
-    if (p) return p;
+function makeFindProducer(ingestCtx) {
+  return function findProducer(peers, producerId) {
+    if (
+      ingestCtx.producer &&
+      !ingestCtx.producer.closed &&
+      ingestCtx.producer.id === producerId
+    ) {
+      return ingestCtx.producer;
+    }
+    for (const peer of peers.values()) {
+      const p = peer.producers.get(producerId);
+      if (p) return p;
+    }
+    return null;
+  };
+}
+
+function listProducerSummaries(peers, ingestCtx) {
+  const producers = [];
+  if (ingestCtx.producer && !ingestCtx.producer.closed) {
+    producers.push({ id: ingestCtx.producer.id, kind: ingestCtx.producer.kind });
   }
-  return null;
+  for (const peer of peers.values()) {
+    for (const prod of peer.producers.values()) {
+      producers.push({ id: prod.id, kind: prod.kind });
+    }
+  }
+  return producers;
+}
+
+/** MEDIASOUP_INGEST_TEST=1：FFmpeg RTP(H264) → PlainTransport → Producer（Layer C1 PoC） */
+async function setupPlainIngest({ router, peers, ingestCtx, broadcastFn }) {
+  if (process.env.MEDIASOUP_INGEST_TEST !== '1') return;
+
+  const RTP_PAYLOAD_TYPE = Number(process.env.MEDIASOUP_INGEST_PT || 96);
+  const RTP_SSRC = Number(process.env.MEDIASOUP_INGEST_SSRC || 111222333);
+
+  const plainTransport = await router.createPlainTransport({
+    listenIps: listenIpConfig(),
+    rtcpMux: true,
+    comedia: false,
+  });
+
+  ingestCtx.plainTransport = plainTransport;
+
+  const producer = await plainTransport.produce({
+    kind: 'video',
+    rtpParameters: {
+      codecs: [
+        {
+          mimeType: 'video/H264',
+          payloadType: RTP_PAYLOAD_TYPE,
+          clockRate: 90000,
+          parameters: {
+            'packetization-mode': 1,
+            'profile-level-id': '42e01f',
+            'level-asymmetry-allowed': 1,
+          },
+          rtcpFeedback: [],
+        },
+      ],
+      encodings: [{ ssrc: RTP_SSRC }],
+      rtcp: {
+        cname: 'layer-c1-ingest',
+        reducedSize: true,
+      },
+    },
+    appData: { source: 'plain-ingest-test' },
+  });
+
+  ingestCtx.producer = producer;
+
+  producer.on('transportclose', () => {
+    console.warn('Layer C1 ingest producer: transport closed');
+    ingestCtx.producer = null;
+  });
+
+  const tuple = plainTransport.tuple;
+  const lip = tuple.localIp || '127.0.0.1';
+  const ffmpegHost = lip === '0.0.0.0' || lip === '::' ? '127.0.0.1' : lip;
+  const ffmpegPort = tuple.localPort;
+
+  console.log('');
+  console.log('=== Layer C1 ingest (PlainTransport H264, FFmpeg test pattern) ===');
+  console.log('mediasoup RTP tuple:', `${lip}:${ffmpegPort}`);
+  console.log(
+    `ECS/host: bash scripts/ffmpeg-ingest-h264.sh ${ffmpegHost} ${ffmpegPort}`,
+  );
+  console.log(
+    `  PT=${RTP_PAYLOAD_TYPE} SSRC=${RTP_SSRC} (env MEDIASOUP_INGEST_PT / MEDIASOUP_INGEST_SSRC)`,
+  );
+  console.log('Browser: 「仅观看」即可（无需「发布摄像头」）.');
+  console.log('=================================================================');
+  console.log('');
+
+  broadcastFn(peers, null, {
+    type: 'newProducer',
+    producerId: producer.id,
+    kind: producer.kind,
+  });
 }
 
 function broadcast(peers, exceptWs, obj) {
@@ -81,6 +175,14 @@ async function main() {
 
   const router = await worker.createRouter({ mediaCodecs });
   const peers = new Map();
+  const ingestCtx = { producer: null, plainTransport: null };
+  const findProducer = makeFindProducer(ingestCtx);
+
+  try {
+    await setupPlainIngest({ router, peers, ingestCtx, broadcastFn: broadcast });
+  } catch (e) {
+    console.error('MEDIASOUP_INGEST_TEST PlainTransport setup failed:', e);
+  }
 
   const app = express();
   app.use(express.static(path.join(__dirname, 'public')));
@@ -121,13 +223,10 @@ async function main() {
             break;
           }
           case 'listProducers': {
-            const producers = [];
-            for (const [, p] of peers) {
-              for (const prod of p.producers.values()) {
-                producers.push({ id: prod.id, kind: prod.kind });
-              }
-            }
-            reply(ws, requestId, { ok: true, producers });
+            reply(ws, requestId, {
+              ok: true,
+              producers: listProducerSummaries(peers, ingestCtx),
+            });
             break;
           }
           case 'createWebRtcTransport': {
@@ -275,7 +374,10 @@ async function main() {
     const ann = process.env.MEDIASOUP_ANNOUNCED_IP;
     if (ann) console.log('  Remote browser URL:', `http://${ann}:${PORT}/`);
     else console.log('  Remote browser URL: set MEDIASOUP_ANNOUNCED_IP (e.g. EIP) for WebRTC + bookmark');
-    console.log('Layer B: open two tabs — Tab1「发布摄像头」, Tab2「仅观看」.');
+    console.log('Layer B: Tab1「发布摄像头」, Tab2「仅观看」.');
+    if (process.env.MEDIASOUP_INGEST_TEST === '1') {
+      console.log('Layer C1: MEDIASOUP_INGEST_TEST=1 — run FFmpeg from server log, then 「仅观看」.');
+    }
     console.log('Press Ctrl+C to exit.');
   });
 }

@@ -1,7 +1,7 @@
 {
   "name": "webrtc-sfu-pilot",
   "private": true,
-  "description": "mediasoup SFU pilot: Layer A+B (signaling + browser produce/consume)",
+  "description": "mediasoup SFU pilot: Layer A+B + optional C1 PlainTransport ingest (FFmpeg)",
   "license": "UNLICENSED",
   "engines": {
     "node": ">=18"

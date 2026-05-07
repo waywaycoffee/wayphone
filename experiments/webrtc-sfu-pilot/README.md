@@ -38,6 +38,20 @@ docker compose up --build
 
 详见 **`docs/aliyun-ecs-pilot.md` §2.4.1**。
 
+### Layer C1 PoC（FFmpeg → PlainTransport，浏览器「仅观看」）
+
+不经过浏览器摄像头，验证 **RTP → SFU → consume**：
+
+```bash
+sudo apt-get install -y ffmpeg   # ECS 宿主机
+export MEDIASOUP_INGEST_TEST=1
+export MEDIASOUP_ANNOUNCED_IP=你的EIP
+docker compose up -d --build
+docker compose logs --tail=30
+```
+
+按日志在 **宿主机**运行 **`scripts/ffmpeg-ingest-h264.sh <host> <port>`**，浏览器打开页面后 **只点「仅观看」**。说明：**`docs/layer-c-roadmap.md`** §C1.1。
+
 ### 公网 HTTPS 一条链接（可发摄像头）
 
 不依赖 SSH 转发时：用 **Caddy** 在 443 上自动证书，浏览器打开 `https://你的域名/`。仓库内 **`docker-compose.caddy.yml`** + **`Caddyfile`**；**`MEDIASOUP_ANNOUNCED_IP` 仍填 EIP**。完整步骤：**`docs/aliyun-ecs-pilot.md` §4.2**。

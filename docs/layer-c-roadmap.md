@@ -24,6 +24,8 @@
 
 **目标**：在你自己的电脑上 **稳定看到 Redroid 的实时画面**（画质/延迟先不苛求）。**不要求**经过 mediasoup。
 
+**不要和 Layer B 网页混淆**：`experiments/webrtc-sfu-pilot` 的 **`https://…/`** 页面始终是「浏览器 **摄像头** → SFU」试点（左侧仍是本地预览 / 「发布摄像头」）。**C0 通过后那个页面不会变成安卓桌面**。安卓桌面只看 **scrcpy（或其它远控窗口）**；要到 **C1** 才把安卓编码送进 SFU，浏览器「仅观看」里才可能不再是摄像头画面。
+
 **常见做法（择一 PoC）**：
 
 - **scrcpy（推荐）**：本机弹出 **桌面窗口** 显示云机画面；依赖 ADB，与 Layer B 完全独立。  
@@ -49,6 +51,28 @@
 
 **验收**：浏览器 **不开摄像头**，仍能通过 SFU 看到 **来自管道/采集端** 的一路视频（与 Layer B 的 Tab2 体验一致，只是源变了）。
 
+#### C1.1 本仓库最小 PoC（FFmpeg 彩条 → PlainTransport）
+
+已实现：**`server.cjs`** 在 **`MEDIASOUP_INGEST_TEST=1`** 时创建 **PlainTransport + H264 Producer**，启动日志会打印 **RTP 目的地址** 与 **`scripts/ffmpeg-ingest-h264.sh`** 用法。
+
+**ECS（与 SFU 同一台，`network_mode: host`）**：
+
+1. 安装 FFmpeg：`sudo apt-get install -y ffmpeg`  
+2. 启动 SFU 并打开 ingest（示例）：
+
+```bash
+cd /opt/wayphone/experiments/webrtc-sfu-pilot
+export MEDIASOUP_ANNOUNCED_IP=你的EIP
+export MEDIASOUP_INGEST_TEST=1
+docker compose up -d --build
+docker compose logs -f --tail=40
+```
+
+3. 复制日志里的 **`bash scripts/ffmpeg-ingest-h264.sh <host> <port>`**，在 **ECS 宿主机**执行（路径在 **`experiments/webrtc-sfu-pilot/scripts/`**）。  
+4. 浏览器打开试点页 → **只点「仅观看」**（不要点「发布摄像头」），远端格应出现 **FFmpeg 测试图案**。  
+
+与 Layer B 并行时：**ingest producer** 与 **摄像头 producer** 会同时出现在列表；PoC 只做一路 ingest 时可不点「发布摄像头」。详见 **`experiments/webrtc-sfu-pilot/README.md`**。
+
 ---
 
 ### C2 — 触控 / 按键回注（与 WebRTC 解耦）
@@ -70,7 +94,7 @@
 
 ## 2. 与本仓库代码的关系
 
-- **`experiments/webrtc-sfu-pilot/server.cjs`**：当前仅 **浏览器 WebRtcTransport + produce/consume**。Layer C 要 **扩展信令**（例如：`externalVideo` 开关、`producerId` 广播、或独立 `layer-c` 进程通过 **PipeTransport** 连同一 Worker ——具体选型在实现阶段定）。  
+- **`experiments/webrtc-sfu-pilot/server.cjs`**：**浏览器 WebRtcTransport + produce/consume**；可选 **`MEDIASOUP_INGEST_TEST=1`** 走 **PlainTransport + FFmpeg RTP（C1.1 PoC）**。后续可把 Redroid 采集接到同类 RTP 管道或换 **PipeTransport**。  
 - **根目录 `docker-compose.yml`**：Redroid 与 SFU **默认未编排在一起**；同机部署时注意 **端口、CPU、privileged 与 host 网络** 是否共存（SFU 常用 `network_mode: host`，Redroid 常用 bridge ——可行，但要避免端口冲突）。  
 
 ---
