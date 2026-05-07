@@ -1,7 +1,7 @@
 import { Device } from './mediasoup-client.esm.js';
 
 /** 与 index.html 中 app.mjs 查询参数同步 bump，便于确认已加载新前端 */
-const FRONTEND_BUILD = 'pilot-20260207c';
+const FRONTEND_BUILD = 'pilot-20260207g';
 
 const logEl = document.getElementById('log');
 const localVideo = document.getElementById('localVideo');
@@ -21,8 +21,9 @@ let device;
 let sendTransport;
 let recvTransport;
 
-/** 连续多次 play() 会互相 Abort，必须串行 */
-let remotePlayChain = Promise.resolve();
+/** 短时间多次 play() 会触发 AbortError；合并为一次延迟 play */
+let remotePlayTimer;
+let remotePlayLastReason = '';
 
 async function flushProducerQueue() {
   if (!recvTransport) return;
@@ -211,7 +212,7 @@ async function logRecvDiagnostics(
     if (videoBytes > 2000 && (decoded === 0 || decoded === undefined)) {
       if (String(negotiatedMime).includes('VP8')) {
         line +=
-          ' → VP8 仍无帧：① 同机请用 127.0.0.1:端口 推流（run-c1 默认已改；勿长期打本机 EIP）② 停掉旧 ffmpeg 后只跑 vp8 脚本。';
+          ' → VP8 仍无帧：① 同机 127.0.0.1:端口 + run-c1/--local ② 只跑 vp8 ingest ③ 服务端须 pilot-20260207f+（PlainTransport.connect + FFmpeg -localport 35500），curl /__pilot_version 核对。';
       } else {
         line +=
           ' → 有视频流量但无解码帧：可试服务端 MEDIASOUP_INGEST_CODEC=vp8 + 宿主机 vp8 FFmpeg，见 README。';
@@ -254,23 +255,31 @@ async function consumeIfViewer(producerId) {
   const track = consumer.track;
   const sawRemoteUnmuteRef = { v: false };
 
-  function tryPlayRemoteVideo(reason) {
+  function schedulePlayRemoteVideo(reason) {
     remoteVideo.muted = true;
-    remotePlayChain = remotePlayChain.then(async () => {
+    remotePlayLastReason = reason;
+    clearTimeout(remotePlayTimer);
+    remotePlayTimer = setTimeout(async () => {
+      const r = remotePlayLastReason;
       try {
         await remoteVideo.play();
-        log(`远端 video.play OK（${reason}）`);
+        log(`远端 video.play OK（${r}）`);
       } catch (e) {
-        log(`远端 video.play（${reason}）: ${e.name} — ${e.message}`);
+        if (e.name === 'AbortError') {
+          log(
+            `远端 video.play（${r}）: AbortError（多为上一路 play 未结束；已合并调度，若仍无画面请看 framesDecoded 与 SFU ingest 日志）`,
+          );
+        } else {
+          log(`远端 video.play（${r}）: ${e.name} — ${e.message}`);
+        }
       }
-    });
-    return remotePlayChain;
+    }, 160);
   }
 
   track.addEventListener('unmute', () => {
     sawRemoteUnmuteRef.v = true;
     log('远端 video 轨 unmute（开始收到媒体）');
-    void tryPlayRemoteVideo('unmute 后重试');
+    void schedulePlayRemoteVideo('unmute 后重试');
   });
   track.addEventListener('mute', () => log('远端 video 轨 mute（暂无媒体帧，多为网络/NAT）'));
   track.addEventListener('ended', () => log('远端 video 轨 ended'));
@@ -294,13 +303,13 @@ async function consumeIfViewer(producerId) {
     if (!track.muted) {
       sawRemoteUnmuteRef.v = true;
       log('远端轨已是 unmuted（补绑：立即 play）');
-      void tryPlayRemoteVideo('microtask 已 unmuted');
+      void schedulePlayRemoteVideo('microtask 已 unmuted');
     }
   });
   remoteVideo.addEventListener(
     'loadeddata',
     () => {
-      void tryPlayRemoteVideo('loadeddata');
+      void schedulePlayRemoteVideo('loadeddata');
     },
     { once: true },
   );
@@ -313,9 +322,8 @@ async function consumeIfViewer(producerId) {
     },
     { once: true },
   );
-  void tryPlayRemoteVideo('srcObject 后首次');
-  setTimeout(() => void tryPlayRemoteVideo('400ms 后'), 400);
-  setTimeout(() => void tryPlayRemoteVideo('1.2s 后'), 1200);
+  void schedulePlayRemoteVideo('srcObject 后');
+  setTimeout(() => void schedulePlayRemoteVideo('1.5s 兜底'), 1500);
   if (typeof remoteVideo.requestVideoFrameCallback === 'function') {
     remoteVideo.requestVideoFrameCallback(() => {
       log(
