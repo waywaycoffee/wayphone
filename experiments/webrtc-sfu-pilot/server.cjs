@@ -12,7 +12,7 @@ const HTTP_LISTEN_HOST = process.env.HTTP_LISTEN_HOST || '0.0.0.0';
 const RTC_MIN_PORT = Number(process.env.MEDIASOUP_RTC_MIN_PORT || 40000);
 const RTC_MAX_PORT = Number(process.env.MEDIASOUP_RTC_MAX_PORT || 49999);
 /** 与前端/镜像一致；`curl http://<EIP>:3000/__pilot_version` 可验证是否已部署新镜像（与浏览器缓存无关） */
-const PILOT_VERSION = process.env.PILOT_VERSION || 'pilot-20260207c';
+const PILOT_VERSION = process.env.PILOT_VERSION || 'pilot-20260207d';
 
 function listenIpConfig() {
   const announcedIp = process.env.MEDIASOUP_ANNOUNCED_IP;
@@ -404,29 +404,38 @@ async function main() {
               !ingestCtx.producer.closed &&
               consumer.producerId === ingestCtx.producer.id
             ) {
-              setTimeout(() => {
+              const logIngestStats = (phase) => {
                 ingestCtx.producer
                   .getStats()
                   .then((stats) => {
-                    const v = Array.isArray(stats)
-                      ? stats.find((s) => s.type === 'inbound-rtp' && s.kind === 'video')
-                      : null;
+                    if (!Array.isArray(stats) || stats.length === 0) {
+                      console.warn(
+                        `Layer C1 ingest producer getStats (${phase}): [] — SFU 仍未统计到 RTP。请确认：① 容器启动后日志里的 RTP 端口与 FFmpeg 一致 ② 同机用 127.0.0.1:端口 ③ 宿主机 sudo tcpdump -i lo -n udp port <端口> -c 3 有包`,
+                      );
+                      return;
+                    }
+                    const v = stats.find((s) => s.type === 'inbound-rtp' && s.kind === 'video');
                     if (v) {
                       console.log(
-                        'Layer C1 FFmpeg→SFU (ingest producer):',
+                        `Layer C1 FFmpeg→SFU (${phase}):`,
                         `packetCount=${v.packetCount} byteCount=${v.byteCount} bitrate=${v.bitrate}`,
                       );
                       if (Number(v.packetCount) === 0) {
                         console.warn(
-                          'Layer C1: ingest 收包为 0 — 确认 FFmpeg 在跑；RTP 目标端口正确；脚本已使用 rtcpport=与 RTP 同端口（rtcpMux）。',
+                          'Layer C1: ingest 收包为 0 — 查 FFmpeg 与端口、rtcpMux(rtcpport=)。',
                         );
                       }
                     } else {
-                      console.log('Layer C1 ingest producer getStats:', JSON.stringify(stats));
+                      console.log(
+                        `Layer C1 ingest producer getStats (${phase}) 无 video inbound-rtp，条目:`,
+                        stats.map((s) => `${s.type}/${s.kind || '-'}`).join(', '),
+                      );
                     }
                   })
                   .catch((e) => console.warn('Layer C1 producer getStats failed:', e));
-              }, 1500);
+              };
+              setTimeout(() => logIngestStats('1.5s'), 1500);
+              setTimeout(() => logIngestStats('5s'), 5000);
             }
             break;
           }
