@@ -20,7 +20,7 @@ function listenIpConfig() {
   return [{ ip: '127.0.0.1' }];
 }
 
-/** mediasoup ≥3.14：PlainTransport 用 listenInfo，勿再用 listenIps */
+/** mediasoup v3：PlainTransport 使用 listenInfo（listenIps 已不可用） */
 function plainTransportListenInfo() {
   const announcedIp = process.env.MEDIASOUP_ANNOUNCED_IP;
   if (announcedIp && announcedIp.length > 0) {
@@ -70,11 +70,10 @@ async function setupPlainIngest({ router, peers, ingestCtx, broadcastFn }) {
   const RTP_PAYLOAD_TYPE = Number(process.env.MEDIASOUP_INGEST_PT || 96);
   const RTP_SSRC = Number(process.env.MEDIASOUP_INGEST_SSRC || 111222333);
 
-  // comedia: FFmpeg 从临时 UDP 源端口发 RTP，首包后由 mediasoup 识别远端（见 PlainTransport 文档）
   const plainTransport = await router.createPlainTransport({
     listenInfo: plainTransportListenInfo(),
     rtcpMux: true,
-    comedia: true,
+    comedia: false,
   });
 
   ingestCtx.plainTransport = plainTransport;
@@ -189,11 +188,14 @@ async function main() {
 
   const router = await worker.createRouter({ mediaCodecs });
   const peers = new Map();
-  const ingestCtx = { producer: null, plainTransport: null };
+  const ingestCtx = { producer: null, plainTransport: null, ingestReady: false };
   const findProducer = makeFindProducer(ingestCtx);
 
   try {
     await setupPlainIngest({ router, peers, ingestCtx, broadcastFn: broadcast });
+    if (ingestCtx.producer && !ingestCtx.producer.closed) {
+      ingestCtx.ingestReady = true;
+    }
   } catch (e) {
     console.error('MEDIASOUP_INGEST_TEST PlainTransport setup failed:', e);
   }
@@ -390,7 +392,15 @@ async function main() {
     else console.log('  Remote browser URL: set MEDIASOUP_ANNOUNCED_IP (e.g. EIP) for WebRTC + bookmark');
     console.log('Layer B: Tab1「发布摄像头」, Tab2「仅观看」.');
     if (process.env.MEDIASOUP_INGEST_TEST === '1') {
-      console.log('Layer C1: MEDIASOUP_INGEST_TEST=1 — run FFmpeg from server log, then 「仅观看」.');
+      if (ingestCtx.ingestReady) {
+        console.log(
+          'Layer C1: ingest OK — run: bash scripts/run-c1-ffmpeg-ingest.sh (or ffmpeg line above), then 「仅观看」.',
+        );
+      } else {
+        console.warn(
+          'Layer C1: MEDIASOUP_INGEST_TEST=1 but ingest did NOT start (see error above). FFmpeg will not work until fixed.',
+        );
+      }
     }
     console.log('Press Ctrl+C to exit.');
   });
