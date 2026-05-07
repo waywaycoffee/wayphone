@@ -16,7 +16,7 @@ services:
         NODE_IMAGE: ${NODE_IMAGE:-node:20-bookworm}
     network_mode: host
     environment:
-      PILOT_VERSION: ${PILOT_VERSION:-pilot-20260207j}
+      PILOT_VERSION: ${PILOT_VERSION:-pilot-20260207k}
       PORT: ${PORT:-3000}
       MEDIASOUP_ANNOUNCED_IP: ${MEDIASOUP_ANNOUNCED_IP:-127.0.0.1}
       MEDIASOUP_RTC_MIN_PORT: ${MEDIASOUP_RTC_MIN_PORT:-40000}
@@ -25,6 +25,6 @@ services:
       # 浏览器有 RTP 但 framesDecoded=0 / 黑屏时，改为 vp8：MEDIASOUP_INGEST_CODEC=vp8（需重建镜像）
       MEDIASOUP_INGEST_TEST: ${MEDIASOUP_INGEST_TEST:-0}
       MEDIASOUP_INGEST_CODEC: ${MEDIASOUP_INGEST_CODEC:-h264}
-      # C1：FFmpeg 固定源端口，须与宿主机运行 ingest 脚本时的 MEDIASOUP_INGEST_FFMPEG_LOCAL_PORT 一致（默认 35500）
+      # C1 可选：MEDIASOUP_INGEST_PLAIN_CONNECT=1 时启用 connect(固定源端口)；默认不设置= comedia 首包学习（FFmpeg -localport 在 Linux 上常不生效）
       MEDIASOUP_INGEST_FFMPEG_LOCAL_PORT: ${MEDIASOUP_INGEST_FFMPEG_LOCAL_PORT:-35500}
       MEDIASOUP_INGEST_FFMPEG_IP: ${MEDIASOUP_INGEST_FFMPEG_IP:-127.0.0.1}

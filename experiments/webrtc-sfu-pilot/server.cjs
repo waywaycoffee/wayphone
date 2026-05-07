@@ -12,7 +12,7 @@ const HTTP_LISTEN_HOST = process.env.HTTP_LISTEN_HOST || '0.0.0.0';
 const RTC_MIN_PORT = Number(process.env.MEDIASOUP_RTC_MIN_PORT || 40000);
 const RTC_MAX_PORT = Number(process.env.MEDIASOUP_RTC_MAX_PORT || 49999);
 /** 与前端/镜像一致；`curl http://<EIP>:3000/__pilot_version` 可验证是否已部署新镜像（与浏览器缓存无关） */
-const PILOT_VERSION = process.env.PILOT_VERSION || 'pilot-20260207j';
+const PILOT_VERSION = process.env.PILOT_VERSION || 'pilot-20260207k';
 
 function listenIpConfig() {
   const announcedIp = process.env.MEDIASOUP_ANNOUNCED_IP;
@@ -89,16 +89,16 @@ async function setupPlainIngest({ router, peers, ingestCtx, broadcastFn }) {
     );
     return;
   }
-  /** FFmpeg 发送端绑定端口（须与 scripts/ffmpeg-ingest-*.sh 的 -localport 一致）；勿落在 MEDIASOUP_RTC_* 范围内以免撞 WebRTC 端口池 */
+  /** 仅当 MEDIASOUP_INGEST_PLAIN_CONNECT=1：comedia:false + connect(FFmpeg 固定源端口)。默认 comedia:true：FFmpeg 常无法真正绑定 -localport（tcpdump 仍见随机源口），须首包学习源端口 */
   const ffmpegSrcPort = Number(process.env.MEDIASOUP_INGEST_FFMPEG_LOCAL_PORT || 35500);
   const ffmpegSrcIp = process.env.MEDIASOUP_INGEST_FFMPEG_IP || '127.0.0.1';
+  const strictPlainConnect = process.env.MEDIASOUP_INGEST_PLAIN_CONNECT === '1';
 
   const li = plainTransportListenInfo();
   const plainTransport = await router.createPlainTransport({
     listenInfo: li,
     rtcpMux: true,
-    // comedia 在部分环境下无法稳定学习 FFmpeg 临时源端口；改为显式 connect(FFmpeg 固定 localport)
-    comedia: false,
+    comedia: !strictPlainConnect,
   });
 
   ingestCtx.plainTransport = plainTransport;
@@ -132,13 +132,19 @@ async function setupPlainIngest({ router, peers, ingestCtx, broadcastFn }) {
     ingestCtx.producer = null;
   });
 
-  await plainTransport.connect({
-    ip: ffmpegSrcIp,
-    port: ffmpegSrcPort,
-  });
-  console.log(
-    `Layer C1 PlainTransport connect: 远端 RTP 源=${ffmpegSrcIp}:${ffmpegSrcPort}（produce 之后 connect；FFmpeg 仅 -localport ${ffmpegSrcPort}，勿与 local_rtcpport 同绑；env MEDIASOUP_INGEST_FFMPEG_LOCAL_PORT）`,
-  );
+  if (strictPlainConnect) {
+    await plainTransport.connect({
+      ip: ffmpegSrcIp,
+      port: ffmpegSrcPort,
+    });
+    console.log(
+      `Layer C1 PlainTransport connect: 远端 RTP 源=${ffmpegSrcIp}:${ffmpegSrcPort}（MEDIASOUP_INGEST_PLAIN_CONNECT=1；FFmpeg 必须真从该端口发出，见 tcpdump src port）`,
+    );
+  } else {
+    console.log(
+      'Layer C1 PlainTransport comedia=true（默认）：首包到达后自动绑定 FFmpeg 源端口；勿设 MEDIASOUP_INGEST_PLAIN_CONNECT 除非已确认 -localport 生效',
+    );
+  }
 
   const tuple = plainTransport.tuple;
   const lip = tuple.localIp || '127.0.0.1';
@@ -161,11 +167,14 @@ async function setupPlainIngest({ router, peers, ingestCtx, broadcastFn }) {
     '推荐: bash scripts/run-c1-ffmpeg-ingest.sh  # 从 docker compose logs 解析 host/port 并启动 FFmpeg',
   );
   console.log('mediasoup RTP tuple:', `${lip}:${ffmpegPort}`);
+  console.log(`同机 ingest: bash scripts/run-c1-ffmpeg-ingest.sh --local`);
+  if (strictPlainConnect) {
+    console.log(
+      `  严格 connect 模式: FFmpeg 须从 ${ffmpegSrcIp}:${ffmpegSrcPort} 发 RTP（rtp URL 带 &localport=${ffmpegSrcPort} 或验证 tcpdump）`,
+    );
+  }
   console.log(
-    `同机 ingest（推荐）: MEDIASOUP_INGEST_FFMPEG_LOCAL_PORT=${ffmpegSrcPort} bash scripts/${ffmpegScript} 127.0.0.1 ${ffmpegPort}`,
-  );
-  console.log(
-    `跨机: 设置 MEDIASOUP_INGEST_FFMPEG_IP=<推流机地址> 且两端 LOCAL_PORT 一致；bash scripts/${ffmpegScript} ${ffmpegHost} ${ffmpegPort}`,
+    `  手动: bash scripts/${ffmpegScript} 127.0.0.1 ${ffmpegPort}  # 目标见 mediasoup RTP tuple`,
   );
   if (useVp8) {
     console.warn(
@@ -448,7 +457,7 @@ async function main() {
                   const stats = await ingestCtx.producer.getStats();
                   if (!Array.isArray(stats) || stats.length === 0) {
                     console.warn(
-                      `Layer C1 ingest producer getStats (${phase}): [] — 若上行 PlainTransport rtpBytesReceived>0 而此处仍空：多为 PT/SSRC 与 FFmpeg 不一致；若两者皆 0：查目的端口、pgrep ffmpeg 是否含 -localport ${Number(process.env.MEDIASOUP_INGEST_FFMPEG_LOCAL_PORT || 35500)}、tcpdump -i lo udp port <RTP端口>`,
+                      `Layer C1 ingest producer getStats (${phase}): [] — rtpBytesReceived>0 仍空：查 PT/SSRC；两者皆 0：tcpdump 目的 RTP 端口、源端口是否与 PLAIN_CONNECT 模式一致（默认 comedia 首包学源口）`,
                     );
                     return;
                   }

@@ -9,10 +9,10 @@ SSRC=${INGEST_SSRC:-111222333}
 # 须与 server MEDIASOUP_INGEST_FFMPEG_LOCAL_PORT / plainTransport.connect 一致（默认 35500）
 LOCALPORT=${MEDIASOUP_INGEST_FFMPEG_LOCAL_PORT:-${INGEST_FFMPEG_LOCAL_PORT:-35500}}
 
-echo "向 rtp://${HOST}:${PORT} 持续发送 VP8（本地源端口 ${LOCALPORT}，须与 SFU connect 一致）。Ctrl+C 结束。" >&2
+echo "向 rtp://${HOST}:${PORT} 持续发送 VP8（URL 内 localport=${LOCALPORT}；默认 SFU comedia 学源口，勿求与 connect 一致）。Ctrl+C 结束。" >&2
 
 # rtcpport=PORT：与 mediasoup PlainTransport rtcpMux 一致
-# 仅 -localport：RTCP mux 时勿再设 local_rtcpport=同值，否则双绑易失败、源端口漂离 connect()
+# localport 放在 rtp:// 查询串：Linux 上 -f rtp -localport 常不生效（tcpdump 仍见随机源口）
 # libvpx：低延迟、禁用 alt-ref 减少首帧等待
 exec ffmpeg -hide_banner -loglevel warning -re \
   -f lavfi -i "testsrc=size=640x480:rate=15" -pix_fmt yuv420p \
@@ -21,5 +21,5 @@ exec ffmpeg -hide_banner -loglevel warning -re \
   -b:v 2M -maxrate 2M -bufsize 4M \
   -g 30 -keyint_min 30 \
   -payload_type "${PT}" -ssrc "${SSRC}" \
-  -f rtp -pkt_size 1200 -localport "${LOCALPORT}" \
-  "rtp://${HOST}:${PORT}?rtcpport=${PORT}"
+  -f rtp -pkt_size 1200 \
+  "rtp://${HOST}:${PORT}?pkt_size=1200&rtcpport=${PORT}&localport=${LOCALPORT}"
