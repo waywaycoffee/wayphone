@@ -10,7 +10,7 @@ PT=${INGEST_PT:-96}
 SSRC=${INGEST_SSRC:-111222333}
 LOCALPORT=${MEDIASOUP_INGEST_FFMPEG_LOCAL_PORT:-${INGEST_FFMPEG_LOCAL_PORT:-35500}}
 
-echo "向 rtp://${HOST}:${PORT} 持续发送 H264（本地源端口 ${LOCALPORT}，须与 SFU connect 一致）。请保持本终端运行；结束请 Ctrl+C。" >&2
+echo "向 rtp://${HOST}:${PORT} 持续发送 H264（-localport=${LOCALPORT}，须与 SFU connect 一致；勿设 local_rtcpport=同口）。请保持本终端运行；结束请 Ctrl+C。" >&2
 
 # repeat-headers=1：周期性带 SPS/PPS，避免浏览器/WebRTC 解码器收不到参数集而一直黑屏
 # -bf 0、固定 GOP：减少 PlainTransport  ingest 与「无法向 FFmpeg 要关键帧」时的首帧解码问题
@@ -21,5 +21,5 @@ exec ffmpeg -hide_banner -loglevel warning -re \
   -bf 0 -g 30 -keyint_min 30 \
   -x264-params "repeat-headers=1:aud=1" \
   -payload_type "${PT}" -ssrc "${SSRC}" \
-  -f rtp -pkt_size 1200 -localport "${LOCALPORT}" -local_rtcpport "${LOCALPORT}" \
+  -f rtp -pkt_size 1200 -localport "${LOCALPORT}" \
   "rtp://${HOST}:${PORT}?rtcpport=${PORT}"

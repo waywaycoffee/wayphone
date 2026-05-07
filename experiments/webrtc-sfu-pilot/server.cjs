@@ -12,7 +12,7 @@ const HTTP_LISTEN_HOST = process.env.HTTP_LISTEN_HOST || '0.0.0.0';
 const RTC_MIN_PORT = Number(process.env.MEDIASOUP_RTC_MIN_PORT || 40000);
 const RTC_MAX_PORT = Number(process.env.MEDIASOUP_RTC_MAX_PORT || 49999);
 /** 与前端/镜像一致；`curl http://<EIP>:3000/__pilot_version` 可验证是否已部署新镜像（与浏览器缓存无关） */
-const PILOT_VERSION = process.env.PILOT_VERSION || 'pilot-20260207h';
+const PILOT_VERSION = process.env.PILOT_VERSION || 'pilot-20260207i';
 
 function listenIpConfig() {
   const announcedIp = process.env.MEDIASOUP_ANNOUNCED_IP;
@@ -87,13 +87,6 @@ async function setupPlainIngest({ router, peers, ingestCtx, broadcastFn }) {
 
   ingestCtx.plainTransport = plainTransport;
   console.log('Layer C1 PlainTransport listenInfo:', JSON.stringify(li));
-  await plainTransport.connect({
-    ip: ffmpegSrcIp,
-    port: ffmpegSrcPort,
-  });
-  console.log(
-    `Layer C1 PlainTransport connect: 远端 RTP 源=${ffmpegSrcIp}:${ffmpegSrcPort}（FFmpeg 必须 -localport ${ffmpegSrcPort}，env MEDIASOUP_INGEST_FFMPEG_LOCAL_PORT）`,
-  );
 
   const videoCodec = useVp8
     ? {
@@ -134,6 +127,14 @@ async function setupPlainIngest({ router, peers, ingestCtx, broadcastFn }) {
     console.warn('Layer C1 ingest producer: transport closed');
     ingestCtx.producer = null;
   });
+
+  await plainTransport.connect({
+    ip: ffmpegSrcIp,
+    port: ffmpegSrcPort,
+  });
+  console.log(
+    `Layer C1 PlainTransport connect: 远端 RTP 源=${ffmpegSrcIp}:${ffmpegSrcPort}（produce 之后 connect；FFmpeg 仅 -localport ${ffmpegSrcPort}，勿与 local_rtcpport 同绑；env MEDIASOUP_INGEST_FFMPEG_LOCAL_PORT）`,
+  );
 
   const tuple = plainTransport.tuple;
   const lip = tuple.localIp || '127.0.0.1';
@@ -421,38 +422,52 @@ async function main() {
               !ingestCtx.producer.closed &&
               consumer.producerId === ingestCtx.producer.id
             ) {
-              const logIngestStats = (phase) => {
-                ingestCtx.producer
-                  .getStats()
-                  .then((stats) => {
-                    if (!Array.isArray(stats) || stats.length === 0) {
+              const logIngestStats = async (phase) => {
+                try {
+                  const pt = ingestCtx.plainTransport;
+                  if (pt && !pt.closed) {
+                    const ts = await pt.getStats();
+                    const t = ts[0];
+                    if (t) {
+                      console.log(
+                        `Layer C1 PlainTransport stats (${phase}): rtpBytesReceived=${t.rtpBytesReceived} bytesReceived=${t.bytesReceived} remote=${t.tuple?.remoteIp}:${t.tuple?.remotePort}`,
+                      );
+                    }
+                  }
+                } catch (e) {
+                  console.warn(`Layer C1 PlainTransport getStats (${phase}) failed:`, e.message || e);
+                }
+                try {
+                  const stats = await ingestCtx.producer.getStats();
+                  if (!Array.isArray(stats) || stats.length === 0) {
+                    console.warn(
+                      `Layer C1 ingest producer getStats (${phase}): [] — 若上行 PlainTransport rtpBytesReceived>0 而此处仍空：多为 PT/SSRC 与 FFmpeg 不一致；若两者皆 0：查目的端口、pgrep ffmpeg 是否含 -localport ${Number(process.env.MEDIASOUP_INGEST_FFMPEG_LOCAL_PORT || 35500)}、tcpdump -i lo udp port <RTP端口>`,
+                    );
+                    return;
+                  }
+                  const v = stats.find((s) => s.type === 'inbound-rtp' && s.kind === 'video');
+                  if (v) {
+                    console.log(
+                      `Layer C1 FFmpeg→SFU (${phase}):`,
+                      `packetCount=${v.packetCount} byteCount=${v.byteCount} bitrate=${v.bitrate}`,
+                    );
+                    if (Number(v.packetCount) === 0) {
                       console.warn(
-                        `Layer C1 ingest producer getStats (${phase}): [] — SFU 仍未统计到 RTP。请确认：① 目的端口=日志 mediasoup RTP tuple ② FFmpeg 使用固定 -localport（与 MEDIASOUP_INGEST_FFMPEG_LOCAL_PORT / connect 一致）③ tcpdump -i lo 有包`,
-                      );
-                      return;
-                    }
-                    const v = stats.find((s) => s.type === 'inbound-rtp' && s.kind === 'video');
-                    if (v) {
-                      console.log(
-                        `Layer C1 FFmpeg→SFU (${phase}):`,
-                        `packetCount=${v.packetCount} byteCount=${v.byteCount} bitrate=${v.bitrate}`,
-                      );
-                      if (Number(v.packetCount) === 0) {
-                        console.warn(
-                          'Layer C1: ingest 收包为 0 — 查 FFmpeg 与端口、rtcpMux(rtcpport=)。',
-                        );
-                      }
-                    } else {
-                      console.log(
-                        `Layer C1 ingest producer getStats (${phase}) 无 video inbound-rtp，条目:`,
-                        stats.map((s) => `${s.type}/${s.kind || '-'}`).join(', '),
+                        'Layer C1: ingest 收包为 0 — 查 FFmpeg 与端口、rtcpMux(rtcpport=)。',
                       );
                     }
-                  })
-                  .catch((e) => console.warn('Layer C1 producer getStats failed:', e));
+                  } else {
+                    console.log(
+                      `Layer C1 ingest producer getStats (${phase}) 无 video inbound-rtp，条目:`,
+                      stats.map((s) => `${s.type}/${s.kind || '-'}`).join(', '),
+                    );
+                  }
+                } catch (e) {
+                  console.warn('Layer C1 producer getStats failed:', e);
+                }
               };
-              setTimeout(() => logIngestStats('1.5s'), 1500);
-              setTimeout(() => logIngestStats('5s'), 5000);
+              setTimeout(() => void logIngestStats('1.5s'), 1500);
+              setTimeout(() => void logIngestStats('5s'), 5000);
             }
             break;
           }
