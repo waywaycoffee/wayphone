@@ -25,14 +25,38 @@ adb devices
 
 ## Binder 与容器反复重启（`/dev/binder` No such file）
 
-若 `docker logs` / logcat 出现 **`Binder driver '/dev/binder' could not be opened`**，说明 **容器内看不到 binder 设备**。在 ECS **宿主机**上先确认：
+若 `docker logs` / logcat 出现 **`Binder driver '/dev/binder' could not be opened`**，说明 **容器内（或宿主）没有可用的 classic binder 节点**。
+
+### 先读内核配置（Ubuntu 24.04 云机常见）
+
+```bash
+grep CONFIG_ANDROID_BINDER /boot/config-"$(uname -r)" 2>/dev/null | grep -v '^#'
+```
+
+若出现 **`CONFIG_ANDROID_BINDER_DEVICES=""`**（空字符串），表示 **内核不会自动创建 `/dev/binder` / `hwbinder` / `vndbinder`**，即使 **`modprobe binder_linux devices=...`** 也可能 **没有** `/dev/binder`。此时应使用 **binderfs**（`CONFIG_ANDROID_BINDERFS=m` 时）：挂载后在 **`binder-control`** 上 **`BINDER_CTL_ADD`** 创建实例，再 **`/dev/binder` → `/dev/binderfs/binder`** 等符号链接。
+
+本仓库提供一次性脚本（在 ECS **root** 下、仓库已 `git clone` 到例如 `/root/wayphone`）：
+
+```bash
+cd /root/wayphone
+sudo bash scripts/setup-binder-devices.sh
+ls -la /dev/binder /dev/hwbinder /dev/vndbinder
+```
+
+成功后再 **`docker compose up -d`**；根目录 `docker-compose.yml` 中 **`devices:`** 会把上述节点传入 Redroid。
+
+若 **`/boot/config-*` 里根本没有 `CONFIG_ANDROID_BINDER_IPC`**，则当前内核 **不支持** Android binder，只能换镜像/内核或机型。
+
+### 经典节点已预置的内核（少数环境）
+
+若 **`CONFIG_ANDROID_BINDER_DEVICES="binder,hwbinder,vndbinder"`**（或等价），通常只需：
 
 ```bash
 sudo modprobe binder_linux devices="binder,hwbinder,vndbinder"
 ls -la /dev/binder /dev/hwbinder /dev/vndbinder
 ```
 
-三者在且 compose 里已映射 **`devices: /dev/binder` 等**（见根目录 `docker-compose.yml`）后，再 **`docker compose up -d`**。仅 `privileged: true` 在部分 Docker/内核组合下仍不会自动注入上述节点。
+三者在且 compose 里已映射 **`devices:`** 后，再 **`docker compose up -d`**。仅 `privileged: true` 在部分 Docker/内核组合下仍不会自动注入上述节点。
 
 ## 中国移动掌厅（仅备忘，不构成兼容性承诺）
 
