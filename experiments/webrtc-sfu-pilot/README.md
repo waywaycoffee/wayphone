@@ -50,7 +50,7 @@ docker compose up -d --build
 docker compose logs --tail=30
 ```
 
-按日志在 **宿主机**运行 **`scripts/ffmpeg-ingest-h264.sh <host> <port>`**，浏览器打开页面后 **只点「仅观看」**。说明：**`docs/layer-c-roadmap.md`** §C1.1。
+在 **宿主机**、本目录执行（**自动解析端口**）：**`bash scripts/run-c1-ffmpeg-ingest.sh`**。浏览器打开页面后 **只点「仅观看」**。说明：**`docs/layer-c-roadmap.md`** §C1.1。
 
 ### 公网 HTTPS 一条链接（可发摄像头）
 

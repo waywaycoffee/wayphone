@@ -68,7 +68,9 @@ docker compose up -d --build
 docker compose logs -f --tail=40
 ```
 
-3. 复制日志里的 **`bash scripts/ffmpeg-ingest-h264.sh <host> <port>`**，在 **ECS 宿主机**执行（路径在 **`experiments/webrtc-sfu-pilot/scripts/`**）。  
+3. 在 **ECS 宿主机**、目录 **`/opt/wayphone/experiments/webrtc-sfu-pilot`** 执行（**自动从日志解析端口**，无需手填）：  
+   **`bash scripts/run-c1-ffmpeg-ingest.sh`**  
+   若仍失败，再 **`docker compose logs --tail=80`** 看是否含 **`ffmpeg-ingest-h264.sh 127.0.0.1`** 或 **`mediasoup RTP tuple:`**。  
 4. 浏览器打开试点页 → **只点「仅观看」**（不要点「发布摄像头」），远端格应出现 **FFmpeg 测试图案**。  
 
 与 Layer B 并行时：**ingest producer** 与 **摄像头 producer** 会同时出现在列表；PoC 只做一路 ingest 时可不点「发布摄像头」。详见 **`experiments/webrtc-sfu-pilot/README.md`**。
