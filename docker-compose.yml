@@ -4,7 +4,7 @@
 
 services:
   redroid:
-    image: ${REDROID_IMAGE:-redroid/redroid:13.0.0-64only-latest}
+    image: ${REDROID_IMAGE:-redroid/redroid:13.0.0_64only-latest}
     container_name: cloudphone-redroid
     restart: unless-stopped
     privileged: true

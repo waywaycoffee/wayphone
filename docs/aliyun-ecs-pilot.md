@@ -106,6 +106,23 @@ docker compose version
 
 成功后请回到 **`/root/wayphone`**（或你的 compose 目录）重新 **`docker compose up -d`** 拉起 **Redroid / webrtc-sfu-pilot**。若 **`VERSION_CODENAME`** 与 Docker 仓库不兼容（少见），以 [官方文档](https://docs.docker.com/engine/install/ubuntu/) 的 **「Install using the convenience script」或发行版对照表** 为准。
 
+### 2.4 国内 ECS 拉 Docker Hub 超时（`registry-1.docker.io … i/o timeout`）
+
+阿里云等国内线路访问 **Docker Hub** 常不稳定。在 ECS 上为 Docker 配置 **镜像加速**（推荐在控制台 **容器镜像服务 ACR → 镜像工具 → 镜像加速器** 复制专属地址），然后：
+
+```bash
+sudo mkdir -p /etc/docker
+sudo tee /etc/docker/daemon.json <<'EOF'
+{
+  "registry-mirrors": ["https://YOUR_MIRROR.aliyuncs.com"]
+}
+EOF
+sudo systemctl daemon-reload
+sudo systemctl restart docker
+```
+
+将 **`YOUR_MIRROR.aliyuncs.com`** 换成控制台给出的加速器域名；若已有其它 `daemon.json` 配置，请手工合并 **`registry-mirrors`** 数组而非覆盖整文件。配置后重试 **`docker compose pull`**。
+
 ---
 
 
