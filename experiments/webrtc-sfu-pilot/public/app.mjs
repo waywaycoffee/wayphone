@@ -1,7 +1,7 @@
 import { Device } from './mediasoup-client.esm.js';
 
 /** 与 index.html 中 app.mjs 查询参数同步 bump，便于确认已加载新前端 */
-const FRONTEND_BUILD = 'pilot-20260207g';
+const FRONTEND_BUILD = 'pilot-20260207h';
 
 const logEl = document.getElementById('log');
 const localVideo = document.getElementById('localVideo');
@@ -212,7 +212,7 @@ async function logRecvDiagnostics(
     if (videoBytes > 2000 && (decoded === 0 || decoded === undefined)) {
       if (String(negotiatedMime).includes('VP8')) {
         line +=
-          ' → VP8 仍无帧：① 同机 127.0.0.1:端口 + run-c1/--local ② 只跑 vp8 ingest ③ 服务端须 pilot-20260207f+（PlainTransport.connect + FFmpeg -localport 35500），curl /__pilot_version 核对。';
+          ' → VP8 仍无帧：① 127.0.0.1:端口 + vp8 ingest ② SFU：PlainTransport.connect + FFmpeg -localport（默认 35500）③ 见下行「服务端 __pilot_version」须 ≥20260207f；若前端构建仍是 c/g 旧字：ECS docker compose build --no-cache。';
       } else {
         line +=
           ' → 有视频流量但无解码帧：可试服务端 MEDIASOUP_INGEST_CODEC=vp8 + 宿主机 vp8 FFmpeg，见 README。';
@@ -408,6 +408,12 @@ function connectWs() {
   ws = new WebSocket(wsUrl);
   ws.addEventListener('open', () => {
     log(`前端构建 ${FRONTEND_BUILD} | WebSocket 已连接 ${wsUrl}`);
+    void fetch(`/__pilot_version?t=${Date.now()}`, { cache: 'no-store' })
+      .then((r) => r.text())
+      .then((t) =>
+        log(`服务端 __pilot_version: ${t.trim()}（应与「前端构建」同版本；不一致则缓存或镜像未重建）`),
+      )
+      .catch((e) => log(`__pilot_version 拉取失败: ${e.message}`));
     attachWsHandlers();
   });
   ws.addEventListener('close', () => {

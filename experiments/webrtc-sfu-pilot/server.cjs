@@ -12,7 +12,7 @@ const HTTP_LISTEN_HOST = process.env.HTTP_LISTEN_HOST || '0.0.0.0';
 const RTC_MIN_PORT = Number(process.env.MEDIASOUP_RTC_MIN_PORT || 40000);
 const RTC_MAX_PORT = Number(process.env.MEDIASOUP_RTC_MAX_PORT || 49999);
 /** 与前端/镜像一致；`curl http://<EIP>:3000/__pilot_version` 可验证是否已部署新镜像（与浏览器缓存无关） */
-const PILOT_VERSION = process.env.PILOT_VERSION || 'pilot-20260207g';
+const PILOT_VERSION = process.env.PILOT_VERSION || 'pilot-20260207h';
 
 function listenIpConfig() {
   const announcedIp = process.env.MEDIASOUP_ANNOUNCED_IP;
@@ -252,14 +252,20 @@ async function main() {
     res.setHeader('Cache-Control', 'no-store');
     res.json({ ok: true, pilotVersion: PILOT_VERSION });
   });
-  // 避免浏览器/CDN 强缓存旧 app.mjs（用户曾看到与仓库不一致的日志文案）
-  app.use((req, res, next) => {
-    if (/\.(mjs|js|html)$/i.test(req.path)) {
-      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
-    }
-    next();
-  });
-  app.use(express.static(path.join(__dirname, 'public')));
+  app.use(
+    express.static(path.join(__dirname, 'public'), {
+      etag: false,
+      lastModified: false,
+      setHeaders(res, filePath) {
+        if (/\.(html|js|mjs|css)$/i.test(filePath)) {
+          res.setHeader(
+            'Cache-Control',
+            'no-store, no-cache, must-revalidate, pragma: no-cache, max-age=0',
+          );
+        }
+      },
+    }),
+  );
 
   const httpServer = http.createServer(app);
   const wss = new WebSocket.Server({ server: httpServer });
