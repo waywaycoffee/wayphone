@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "express": "^4.21.0",
-    "mediasoup": "^3.19.0",
+    "mediasoup": "^3.19.22",
     "mediasoup-client": "^3.7.17",
     "ws": "^8.18.0"
   },
