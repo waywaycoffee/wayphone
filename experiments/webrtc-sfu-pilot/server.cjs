@@ -143,11 +143,13 @@ async function setupPlainIngest({ router, peers, ingestCtx, broadcastFn }) {
   const ffmpegSrcPort = Number(process.env.MEDIASOUP_INGEST_FFMPEG_LOCAL_PORT || 35500);
   const ffmpegSrcIp = process.env.MEDIASOUP_INGEST_FFMPEG_IP || '127.0.0.1';
   const strictPlainConnect = process.env.MEDIASOUP_INGEST_PLAIN_CONNECT === '1';
+  /** 与 versatica/mediasoup-demo broadcasters/ffmpeg.sh 一致：rtcpMux=false 时 FFmpeg 使用 ?rtcpport=<独立端口>，部分环境 VP8/FFmpeg 在 rtcpMux=true 下 rtpBytesReceived 不涨 */
+  const ingestRtcpMux = process.env.MEDIASOUP_INGEST_RTCP_MUX !== '0';
 
   const li = plainTransportListenInfo();
   const plainTransport = await router.createPlainTransport({
     listenInfo: li,
-    rtcpMux: true,
+    rtcpMux: ingestRtcpMux,
     comedia: !strictPlainConnect,
   });
 
@@ -210,10 +212,22 @@ async function setupPlainIngest({ router, peers, ingestCtx, broadcastFn }) {
     );
   }
 
+  console.log(
+    `Layer C1 PlainTransport rtcpMux=${ingestRtcpMux}（MEDIASOUP_INGEST_RTCP_MUX=0 可对齐 mediasoup-demo，FFmpeg 用独立 rtcpport）`,
+  );
+
   const tuple = plainTransport.tuple;
   const lip = tuple.localIp || '127.0.0.1';
   const ffmpegHost = lip === '0.0.0.0' || lip === '::' ? '127.0.0.1' : lip;
   const ffmpegPort = tuple.localPort;
+  const rtcpT = plainTransport.rtcpTuple;
+  const ffmpegRtcpPort =
+    ingestRtcpMux || !rtcpT ? ffmpegPort : rtcpT.localPort ?? ffmpegPort;
+  if (!ingestRtcpMux && rtcpT) {
+    console.log(
+      `Layer C1 ingest_rtcp_port=${ffmpegRtcpPort}（FFmpeg URL 须 rtcpport=${ffmpegRtcpPort}，勿与 RTP 端口 ${ffmpegPort} 混用）`,
+    );
+  }
   const ffmpegScript = useVp8 ? 'ffmpeg-ingest-vp8.sh' : 'ffmpeg-ingest-h264.sh';
 
   console.log('');
@@ -238,7 +252,9 @@ async function setupPlainIngest({ router, peers, ingestCtx, broadcastFn }) {
     );
   }
   console.log(
-    `  手动: bash scripts/${ffmpegScript} 127.0.0.1 ${ffmpegPort}  # 目标见 mediasoup RTP tuple`,
+    ingestRtcpMux
+      ? `  手动: bash scripts/${ffmpegScript} 127.0.0.1 ${ffmpegPort}  # rtcpMux=true，rtcp 与 RTP 同端口`
+      : `  手动: bash scripts/${ffmpegScript} 127.0.0.1 ${ffmpegPort} ${ffmpegRtcpPort}  # 第三参为 RTCP 端口`,
   );
   if (useVp8) {
     console.warn(

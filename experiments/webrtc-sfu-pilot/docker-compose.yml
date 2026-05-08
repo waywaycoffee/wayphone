@@ -26,6 +26,8 @@ services:
       # 浏览器有 RTP 但 framesDecoded=0 / 黑屏时，改为 vp8：MEDIASOUP_INGEST_CODEC=vp8（需重建镜像）
       MEDIASOUP_INGEST_TEST: ${MEDIASOUP_INGEST_TEST:-0}
       MEDIASOUP_INGEST_CODEC: ${MEDIASOUP_INGEST_CODEC:-h264}
+      # C1：=0 时 PlainTransport rtcpMux=false，FFmpeg ?rtcpport=独立端口（对齐 versatica/mediasoup-demo）；VP8+rtpBytesReceived=0 时可试
+      MEDIASOUP_INGEST_RTCP_MUX: ${MEDIASOUP_INGEST_RTCP_MUX:-1}
       # C1 可选：MEDIASOUP_INGEST_PLAIN_CONNECT=1 时启用 connect(固定源端口)；默认不设置= comedia 首包学习（FFmpeg -localport 在 Linux 上常不生效）
       MEDIASOUP_INGEST_FFMPEG_LOCAL_PORT: ${MEDIASOUP_INGEST_FFMPEG_LOCAL_PORT:-35500}
       MEDIASOUP_INGEST_FFMPEG_IP: ${MEDIASOUP_INGEST_FFMPEG_IP:-127.0.0.1}

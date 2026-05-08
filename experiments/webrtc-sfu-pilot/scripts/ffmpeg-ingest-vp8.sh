@@ -1,19 +1,20 @@
 #!/usr/bin/env bash
 # Layer C1：向 mediasoup PlainTransport 发送 VP8 测试图案（需 MEDIASOUP_INGEST_CODEC=vp8 且 PT/SSRC 与 server 一致）。
-# 用法：bash scripts/ffmpeg-ingest-vp8.sh 127.0.0.1 41234
+# 用法：bash scripts/ffmpeg-ingest-vp8.sh 127.0.0.1 41234 [rtcp_port]
 set -euo pipefail
 HOST=${1:-127.0.0.1}
-PORT=${2:?usage: "$0 <host> <rtp_port>"}
+PORT=${2:?usage: "$0 <host> <rtp_port> [rtcp_port]"}
+RTCP_PORT=${3:-${INGEST_RTCP_PORT:-$PORT}}
 PT=${INGEST_PT:-96}
 SSRC=${INGEST_SSRC:-111222333}
 # 默认不写 localport（见 ffmpeg-ingest-h264.sh）。connect 固定源口时再 export MEDIASOUP_INGEST_FFMPEG_LOCAL_PORT=35500
 LOCALPORT=${MEDIASOUP_INGEST_FFMPEG_LOCAL_PORT:-${INGEST_FFMPEG_LOCAL_PORT:-}}
 if [[ -n "${LOCALPORT}" && "${LOCALPORT}" != "0" ]]; then
-  RTP_URL="rtp://${HOST}:${PORT}?pkt_size=1200&rtcpport=${PORT}&localport=${LOCALPORT}"
+  RTP_URL="rtp://${HOST}:${PORT}?pkt_size=1200&rtcpport=${RTCP_PORT}&localport=${LOCALPORT}"
   echo "向 ${RTP_URL} 持续发送 VP8（localport=${LOCALPORT}）。Ctrl+C 结束。" >&2
 else
-  RTP_URL="rtp://${HOST}:${PORT}?pkt_size=1200&rtcpport=${PORT}"
-  echo "向 ${RTP_URL} 持续发送 VP8（未指定 localport）。Ctrl+C 结束。" >&2
+  RTP_URL="rtp://${HOST}:${PORT}?pkt_size=1200&rtcpport=${RTCP_PORT}"
+  echo "向 ${RTP_URL} 持续发送 VP8（RTP=${PORT} RTCP=${RTCP_PORT}）。Ctrl+C 结束。" >&2
 fi
 
 # rtcpport=PORT：与 mediasoup PlainTransport rtcpMux 一致

@@ -29,16 +29,18 @@ LOG=$(collect_logs)
 STRIPPED=$(echo "${LOG}" | sed -E 's/^[^|]+\|[[:space:]]+//')
 
 # 日志格式：ffmpeg-ingest-h264.sh / ffmpeg-ingest-vp8.sh <host> <port>
-INGEST_CMD=$(echo "${STRIPPED}" | grep -oE 'ffmpeg-ingest-(h264|vp8)\.sh[[:space:]]+[0-9.]+[[:space:]]+[0-9]+' | tail -n1)
+INGEST_CMD=$(echo "${STRIPPED}" | grep -oE 'ffmpeg-ingest-(h264|vp8)\.sh[[:space:]]+[0-9.]+[[:space:]]+[0-9]+([[:space:]]+[0-9]+)?' | tail -n1)
 SCRIPT_BASENAME="ffmpeg-ingest-h264.sh"
 HOST=""
 PORT=""
+RTCP_FROM_LOG=""
 if [[ -n "${INGEST_CMD}" ]]; then
   if [[ "${INGEST_CMD}" == *vp8* ]]; then
     SCRIPT_BASENAME="ffmpeg-ingest-vp8.sh"
   fi
   HOST=$(echo "${INGEST_CMD}" | awk '{print $2}')
   PORT=$(echo "${INGEST_CMD}" | awk '{print $3}')
+  RTCP_FROM_LOG=$(echo "${INGEST_CMD}" | awk '{print $4}')
 fi
 
 if [[ -z "${PORT}" ]]; then
@@ -138,4 +140,16 @@ if [[ -n "${PT_FROM_LOG}" ]]; then
   echo "提示: 从日志解析 INGEST_PT=${INGEST_PT}（传给 ffmpeg-ingest；勿再用默认 96 除非日志如此）" >&2
 fi
 chmod +x "${REPO_DIR}/scripts/ffmpeg-ingest-h264.sh" "${REPO_DIR}/scripts/ffmpeg-ingest-vp8.sh"
-exec bash "${REPO_DIR}/scripts/${SCRIPT_BASENAME}" "${HOST}" "${PORT}"
+RTCP_PORT_ARG=""
+if [[ -n "${RTCP_FROM_LOG}" ]]; then
+  RTCP_PORT_ARG="${RTCP_FROM_LOG}"
+fi
+if [[ -z "${RTCP_PORT_ARG}" ]]; then
+  RTCP_PORT_ARG=$(echo "${STRIPPED}" | grep -oE 'ingest_rtcp_port=[0-9]+' | tail -n1 | sed 's/ingest_rtcp_port=//')
+fi
+FFMPEG_ARGS=( "${HOST}" "${PORT}" )
+if [[ -n "${RTCP_PORT_ARG}" && "${RTCP_PORT_ARG}" != "${PORT}" ]]; then
+  FFMPEG_ARGS+=( "${RTCP_PORT_ARG}" )
+  echo "提示: 独立 RTCP 端口 ${RTCP_PORT_ARG}（MEDIASOUP_INGEST_RTCP_MUX=0 / mediasoup-demo 模式）" >&2
+fi
+exec bash "${REPO_DIR}/scripts/${SCRIPT_BASENAME}" "${FFMPEG_ARGS[@]}"
