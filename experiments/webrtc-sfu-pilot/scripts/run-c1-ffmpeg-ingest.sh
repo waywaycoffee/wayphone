@@ -69,6 +69,15 @@ case "${CODEC_ENV}" in
   vp8) SCRIPT_BASENAME="ffmpeg-ingest-vp8.sh" ;;
 esac
 
+# 与 docker-compose 同名的变量常被 source 进 shell（默认 35500 是给容器 Plain connect 用）。
+# 默认 comedia 时 FFmpeg 不应绑 localport，否则易「Address already in use」且与 SFU 学习源口无关。
+if [[ "${MEDIASOUP_INGEST_PLAIN_CONNECT:-}" != "1" ]]; then
+  if [[ -n "${MEDIASOUP_INGEST_FFMPEG_LOCAL_PORT:-}" ]] || [[ -n "${INGEST_FFMPEG_LOCAL_PORT:-}" ]]; then
+    echo "提示: 已清除宿主机 MEDIASOUP_INGEST_FFMPEG_LOCAL_PORT / INGEST_FFMPEG_LOCAL_PORT（非 MEDIASOUP_INGEST_PLAIN_CONNECT=1 时不要传给 FFmpeg）。" >&2
+  fi
+  unset MEDIASOUP_INGEST_FFMPEG_LOCAL_PORT INGEST_FFMPEG_LOCAL_PORT 2>/dev/null || true
+fi
+
 if [[ "${HOST}" == "0.0.0.0" ]]; then
   HOST="127.0.0.1"
 fi
