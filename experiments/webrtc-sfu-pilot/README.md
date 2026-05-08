@@ -51,7 +51,7 @@ docker compose config | grep -E 'MEDIASOUP_|PILOT_VERSION'
 docker compose build --no-cache && docker compose up -d --force-recreate
 ```
 
-**注意**：`.env` 里若写 **`PILOT_VERSION=`**，会盖住 compose 默认，容易出现「仓库已 bump、**`curl __pilot_version` 仍是旧字母**」；一般**不要写**，除非你要长期固定展示名。前端 **`FRONTEND_BUILD`** 在 **`public/app.mjs`** 里，随 **`docker compose build`** 进镜像，**不读** `.env`。
+**部署指纹（前后端一致）**：只在 **`package.json` 的 `pilotVersion`** 改一处（如 `pilot-20260207q`），再执行 **`npm run build:client`**（会先跑 `scripts/sync-pilot-version.cjs`，把 **`public/app.mjs`** / **`index.html`** 里同类 token 写齐）。**`server.cjs`** 的 **`__pilot_version`** 也读同一字段。`.env` 里**不要**写 **`PILOT_VERSION`**，除非要临时覆盖；`docker-compose` 默认不再注入该变量。
 
 ## Docker（Linux，可选）
 

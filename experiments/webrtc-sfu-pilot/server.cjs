@@ -18,14 +18,15 @@ const path = require('path');
 const express = require('express');
 const WebSocket = require('ws');
 const mediasoup = require('mediasoup');
+const pilotPkg = require('./package.json');
 
 const PORT = Number(process.env.PORT || 3000);
 /** 0.0.0.0 = all IPv4 interfaces (explicit; avoids confusion with logs / some host setups). */
 const HTTP_LISTEN_HOST = process.env.HTTP_LISTEN_HOST || '0.0.0.0';
 const RTC_MIN_PORT = Number(process.env.MEDIASOUP_RTC_MIN_PORT || 40000);
 const RTC_MAX_PORT = Number(process.env.MEDIASOUP_RTC_MAX_PORT || 49999);
-/** 与前端/镜像一致；`curl http://<EIP>:3000/__pilot_version` 可验证是否已部署新镜像（与浏览器缓存无关） */
-const PILOT_VERSION = process.env.PILOT_VERSION || 'pilot-20260207p';
+/** 与前端一致：唯一来源 package.json「pilotVersion」；`PILOT_VERSION` 环境变量可临时覆盖。`npm run build:client` 会同步 public 内文案。 */
+const PILOT_VERSION = process.env.PILOT_VERSION || pilotPkg.pilotVersion || 'pilot-unknown';
 
 /**
  * MEDIASOUP_ROUTER_VIDEO_H264_ONLY=1：Router 只注册 H264，不注册 VP8（排查 PT/codec 映射时减少变量）。

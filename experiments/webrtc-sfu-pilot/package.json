@@ -2,13 +2,14 @@
   "name": "webrtc-sfu-pilot",
   "private": true,
   "description": "mediasoup SFU pilot: Layer A+B + optional C1 PlainTransport ingest (FFmpeg)",
+  "pilotVersion": "pilot-20260207q",
   "license": "UNLICENSED",
   "engines": {
     "node": ">=20"
   },
   "scripts": {
     "start": "node server.cjs",
-    "build:client": "esbuild client/entry.mjs --bundle --format=esm --outfile=public/mediasoup-client.esm.js --platform=browser",
+    "build:client": "node scripts/sync-pilot-version.cjs && esbuild client/entry.mjs --bundle --format=esm --outfile=public/mediasoup-client.esm.js --platform=browser",
     "c1:ingest": "bash scripts/run-c1-ffmpeg-ingest.sh"
   },
   "dependencies": {
