@@ -136,13 +136,19 @@ if [[ -n "${PT_FROM_LOG}" ]]; then
   export INGEST_PT="${PT_FROM_LOG}"
   echo "提示: 从日志解析 INGEST_PT=${INGEST_PT}（传给 ffmpeg-ingest；勿再用默认 96 除非日志如此）" >&2
 fi
-chmod +x "${REPO_DIR}/scripts/ffmpeg-ingest-h264.sh" "${REPO_DIR}/scripts/ffmpeg-ingest-vp8.sh"
+chmod +x "${REPO_DIR}/scripts/ffmpeg-ingest-h264.sh" "${REPO_DIR}/scripts/ffmpeg-ingest-vp8.sh" 2>/dev/null || true
 RTCP_PORT_ARG=""
 if [[ -n "${RTCP_FROM_LOG}" ]]; then
   RTCP_PORT_ARG="${RTCP_FROM_LOG}"
 fi
+# 默认无 ingest_rtcp_port= 日志行；grep 无匹配在 pipefail 下会令整条 $(…) 失败并触发 set -e 提前退出（表现为 run-c1 秒回 #、从不 exec ffmpeg）
 if [[ -z "${RTCP_PORT_ARG}" ]]; then
-  RTCP_PORT_ARG=$(echo "${STRIPPED}" | grep -oE 'ingest_rtcp_port=[0-9]+' | tail -n1 | sed 's/ingest_rtcp_port=//')
+  set +o pipefail
+  _rtcp_line=$(echo "${STRIPPED}" | grep -oE 'ingest_rtcp_port=[0-9]+' | tail -n1)
+  set -o pipefail
+  if [[ -n "${_rtcp_line}" ]]; then
+    RTCP_PORT_ARG="${_rtcp_line#ingest_rtcp_port=}"
+  fi
 fi
 FFMPEG_ARGS=( "${HOST}" "${PORT}" )
 if [[ -n "${RTCP_PORT_ARG}" && "${RTCP_PORT_ARG}" != "${PORT}" ]]; then
