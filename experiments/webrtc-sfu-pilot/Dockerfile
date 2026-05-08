@@ -16,6 +16,7 @@ RUN npm install --no-audit --no-fund
 COPY server.cjs ./
 COPY client ./client
 COPY public ./public
+COPY scripts ./scripts
 
 RUN npm run build:client
 
