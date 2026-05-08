@@ -129,6 +129,10 @@ fi
 if [[ -z "${PT_FROM_LOG}" ]]; then
   PT_FROM_LOG=$(echo "${STRIPPED}" | grep -oE 'PT=[0-9]+[[:space:]]+SSRC=' | tail -n1 | sed -n 's/PT=\([0-9]*\).*/\1/p')
 fi
+# 兜底：服务端固定打印「ingest PT=数字」，不依赖 awk 区块与「PT= x SSRC=」同行
+if [[ -z "${PT_FROM_LOG}" ]]; then
+  PT_FROM_LOG=$(echo "${STRIPPED}" | grep -oE 'ingest PT=[0-9]+' | tail -n1 | sed -n 's/.*ingest PT=//p')
+fi
 if [[ -n "${PT_FROM_LOG}" ]]; then
   export INGEST_PT="${PT_FROM_LOG}"
   echo "提示: 从日志解析 INGEST_PT=${INGEST_PT}（传给 ffmpeg-ingest；勿再用默认 96 除非日志如此）" >&2
