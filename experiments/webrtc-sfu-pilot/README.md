@@ -56,7 +56,24 @@ docker compose up --build
 
 ### Layer C1 PoC（FFmpeg → PlainTransport，浏览器「仅观看」）
 
-不经过浏览器摄像头，验证 **RTP → SFU → consume**：
+不经过浏览器摄像头，验证 **RTP → SFU → consume**。
+
+#### 推荐：一条命令整理 `.env` + 固定 **H264**（解决「.env 与仓库不同步、总有 VP8」）
+
+在 **`experiments/webrtc-sfu-pilot`** 目录（把 **`8.163.51.24`** 换成你的 **EIP / 浏览器可达 IP**）：
+
+```bash
+bash scripts/pilot-c1-h264-bootstrap.sh 8.163.51.24
+# 可选：Router 只留 H264，彻底避免 VP8 进协商
+bash scripts/pilot-c1-h264-bootstrap.sh 8.163.51.24 --router-h264-only
+```
+
+然后按脚本结尾提示执行 **`docker compose build --no-cache`**、**`run-c1`**。  
+说明：**`git pull` 不会改你服务器上的 `.env`**；以后每次大改试点，可再跑一次 bootstrap，或只用 **`pilot-env-unpin-compose-defaults.sh`** / **`pilot-env-ensure-h264-ingest.sh`** 做局部修正。
+
+---
+
+手动方式（等价于心智模型）：
 
 ```bash
 sudo apt-get install -y ffmpeg   # ECS 宿主机
