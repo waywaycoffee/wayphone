@@ -64,11 +64,15 @@ function makeFindProducer(ingestCtx) {
 function listProducerSummaries(peers, ingestCtx) {
   const producers = [];
   if (ingestCtx.producer && !ingestCtx.producer.closed) {
-    producers.push({ id: ingestCtx.producer.id, kind: ingestCtx.producer.kind });
+    producers.push({
+      id: ingestCtx.producer.id,
+      kind: ingestCtx.producer.kind,
+      appData: ingestCtx.producer.appData || {},
+    });
   }
   for (const peer of peers.values()) {
     for (const prod of peer.producers.values()) {
-      producers.push({ id: prod.id, kind: prod.kind });
+      producers.push({ id: prod.id, kind: prod.kind, appData: prod.appData || {} });
     }
   }
   return producers;
@@ -439,6 +443,10 @@ async function main() {
               rtpCapabilities: msg.rtpCapabilities,
               paused: true,
             });
+            const c0 = consumer.rtpParameters?.codecs?.[0];
+            console.log(
+              `consume: producerId=${msg.producerId} appData=${JSON.stringify(producer.appData || {})} → consumer codec=${c0?.mimeType} PT=${c0?.payloadType}`,
+            );
             peer.consumers.set(consumer.id, consumer);
             consumer.on('transportclose', () => {
               peer.consumers.delete(consumer.id);

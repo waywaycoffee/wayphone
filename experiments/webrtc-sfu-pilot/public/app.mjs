@@ -1,7 +1,7 @@
 import { Device } from './mediasoup-client.esm.js';
 
 /** 与 index.html 中 app.mjs 查询参数同步 bump，便于确认已加载新前端 */
-const FRONTEND_BUILD = 'pilot-20260207j';
+const FRONTEND_BUILD = 'pilot-20260207n';
 
 const logEl = document.getElementById('log');
 const localVideo = document.getElementById('localVideo');
@@ -294,7 +294,7 @@ async function consumeIfViewer(producerId) {
       (String(vcodec?.mimeType || '').includes('H264')
         ? '（若一直 framesDecoded=0，请改用 VP8 ingest）'
         : String(vcodec?.mimeType || '').includes('VP8')
-          ? '（framesDecoded=0 时：宿主机必须跑 ffmpeg-ingest-vp8.sh，禁止仍用 h264 推流）'
+          ? '（framesDecoded=0：① 若跑的是 h264 FFmpeg，请把容器 MEDIASOUP_INGEST_CODEC=h264 后重启 SFU；② 若 ingest 为 vp8，宿主机须跑 ffmpeg-ingest-vp8.sh）'
           : ''),
   );
   log('提示：[1s]/[3s] 诊断；video 尺寸仅在 2s / 6s 各打一行，减少刷屏。');
@@ -388,7 +388,16 @@ document.getElementById('btnWatch').addEventListener('click', async () => {
     }
     await createRecvPipeline();
     const list = await rpc('listProducers');
-    const videoP = (list.producers || []).find((p) => p.kind === 'video');
+    const plist = list.producers || [];
+    /** 多条 video 时勿用首个：优先 Layer C1 PlainTransport ingest（与 FFmpeg 编码一致） */
+    const videoP =
+      plist.find((p) => p.kind === 'video' && p.appData && p.appData.source === 'plain-ingest-test') ||
+      plist.find((p) => p.kind === 'video');
+    if (plist.filter((p) => p.kind === 'video').length > 1) {
+      log(
+        `提示: 当前有 ${plist.filter((p) => p.kind === 'video').length} 路 video，已优先 consume ingest（appData.source=plain-ingest-test）。`,
+      );
+    }
     if (videoP) {
       producerQueue.push(videoP.id);
     } else {
