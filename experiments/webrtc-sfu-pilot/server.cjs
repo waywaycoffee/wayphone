@@ -1,5 +1,18 @@
 'use strict';
 
+/**
+ * mediasoup worker 子进程的 C++ 日志走 stdout → Node 用 `debug` 包以 mediasoup:Worker 输出。
+ * 未设置 DEBUG 时这些行不会出现在 docker logs，grep「suitable|ReceiveRtp」会空。
+ * MEDIASOUP_WORKER_DEBUG=1 时自动打开 Worker 命名空间；或手动 DEBUG=mediasoup:Worker,mediasoup:WARN:Worker
+ */
+if (process.env.MEDIASOUP_WORKER_DEBUG === '1') {
+  const need = 'mediasoup:Worker,mediasoup:WARN:Worker';
+  const d = process.env.DEBUG || '';
+  if (!d.includes('mediasoup')) {
+    process.env.DEBUG = d ? `${d},${need}` : need;
+  }
+}
+
 const http = require('http');
 const path = require('path');
 const express = require('express');
@@ -36,7 +49,8 @@ function workerLogSettings() {
   }
   if (process.env.MEDIASOUP_WORKER_DEBUG === '1') {
     logLevel = 'debug';
-    logTags = logTags && logTags.length ? logTags : ['rtp', 'rtcp'];
+    // info：部分 Transport 日志；rtx：NACK 等；与 rtp/rtcp 一起更易看到丢包/匹配问题
+    logTags = logTags && logTags.length ? logTags : ['info', 'rtp', 'rtcp', 'rtx'];
   }
   const settings = { logLevel, rtcMinPort: RTC_MIN_PORT, rtcMaxPort: RTC_MAX_PORT };
   if (logTags && logTags.length) settings.logTags = logTags;
