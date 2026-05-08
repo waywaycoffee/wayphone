@@ -22,6 +22,37 @@ npm start
 
 用浏览器直接打开 **`http://公网IP:3000`** 时，多数环境**无法「发布摄像头」**（`navigator.mediaDevices` 被禁用）；请用 **`http://127.0.0.1:3000` + SSH 端口转发**，或 **HTTPS**，见 **`docs/webrtc-sfu-pilot.md` §3.2**。
 
+## 本地维护 `.env` 并上传到 ECS（跟仓库走）
+
+仓库根目录 **`.gitignore` 已忽略 `.env`**：你在本机改 **`experiments/webrtc-sfu-pilot/.env`** 不会进 Git，**不要** `git add .env`；与 **`docker-compose.yml` / `server.cjs` 默认值** 的同步由你在本机文件里控制，再上传到服务器即可。
+
+**本机（克隆仓库后，在试点目录）：**
+
+```bash
+cd experiments/webrtc-sfu-pilot
+cp .env.pilot.example .env
+# 用编辑器改 .env：至少 MEDIASOUP_ANNOUNCED_IP、MEDIASOUP_INGEST_TEST=1、MEDIASOUP_INGEST_CODEC=h264 等
+```
+
+**上传到 ECS（把 `root`、`EIP`、路径换成你的）：**
+
+```bash
+scp experiments/webrtc-sfu-pilot/.env root@EIP:/opt/wayphone/experiments/webrtc-sfu-pilot/.env
+# 或 rsync：
+# rsync -avz experiments/webrtc-sfu-pilot/.env root@EIP:/opt/wayphone/experiments/webrtc-sfu-pilot/.env
+```
+
+**ECS 上（SSH 登录后）：**
+
+```bash
+cd /opt/wayphone && git pull origin main
+cd experiments/webrtc-sfu-pilot
+docker compose config | grep -E 'MEDIASOUP_|PILOT_VERSION'
+docker compose build --no-cache && docker compose up -d --force-recreate
+```
+
+**注意**：`.env` 里若写 **`PILOT_VERSION=`**，会盖住 compose 默认，容易出现「仓库已 bump、**`curl __pilot_version` 仍是旧字母**」；一般**不要写**，除非你要长期固定展示名。前端 **`FRONTEND_BUILD`** 在 **`public/app.mjs`** 里，随 **`docker compose build`** 进镜像，**不读** `.env`。
+
 ## Docker（Linux，可选）
 
 若本目录存在 **`.env`** 且写过 **`PILOT_VERSION=`** / **`MEDIASOUP_INGEST_CODEC=`**，会**永久盖住** `docker-compose.yml` 里的默认值，表现为版本字母「追不上」、ingest _codec 与预期不一致。可执行：
