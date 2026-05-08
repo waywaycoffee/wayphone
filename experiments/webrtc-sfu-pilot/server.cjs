@@ -12,7 +12,16 @@ const HTTP_LISTEN_HOST = process.env.HTTP_LISTEN_HOST || '0.0.0.0';
 const RTC_MIN_PORT = Number(process.env.MEDIASOUP_RTC_MIN_PORT || 40000);
 const RTC_MAX_PORT = Number(process.env.MEDIASOUP_RTC_MAX_PORT || 49999);
 /** 与前端/镜像一致；`curl http://<EIP>:3000/__pilot_version` 可验证是否已部署新镜像（与浏览器缓存无关） */
-const PILOT_VERSION = process.env.PILOT_VERSION || 'pilot-20260207l';
+const PILOT_VERSION = process.env.PILOT_VERSION || 'pilot-20260207m';
+
+/**
+ * MEDIASOUP_ROUTER_VIDEO_H264_ONLY=1：Router 只注册 H264，不注册 VP8（排查 PT/codec 映射时减少变量）。
+ * 设为 1 后请勿再用 MEDIASOUP_INGEST_CODEC=vp8（router 将无 VP8）。
+ */
+const ROUTER_VIDEO_H264_ONLY = process.env.MEDIASOUP_ROUTER_VIDEO_H264_ONLY === '1';
+
+/** MEDIASOUP_INGEST_TRACE=1 且 Layer C1 启用时：为 ingest Producer 打开 trace（rtp/keyframe/pli 等），日志量较大 */
+const INGEST_TRACE = process.env.MEDIASOUP_INGEST_TRACE === '1';
 
 function listenIpConfig() {
   const announcedIp = process.env.MEDIASOUP_ANNOUNCED_IP;
@@ -127,6 +136,20 @@ async function setupPlainIngest({ router, peers, ingestCtx, broadcastFn }) {
 
   ingestCtx.producer = producer;
 
+  if (INGEST_TRACE) {
+    try {
+      await producer.enableTraceEvent(['rtp', 'keyframe', 'pli', 'nack']);
+      producer.on('trace', (trace) => {
+        console.log('Layer C1 ingest producer trace:', JSON.stringify(trace));
+      });
+      console.log(
+        'Layer C1: MEDIASOUP_INGEST_TRACE=1 — producer trace enabled (rtp/keyframe/pli/nack)；若 worker 未识别 RTP，此处通常无 rtp 事件)',
+      );
+    } catch (e) {
+      console.warn('Layer C1: enableTraceEvent failed:', e.message || e);
+    }
+  }
+
   producer.on('transportclose', () => {
     console.warn('Layer C1 ingest producer: transport closed');
     ingestCtx.producer = null;
@@ -229,11 +252,15 @@ async function main() {
       clockRate: 48000,
       channels: 2,
     },
-    {
-      kind: 'video',
-      mimeType: 'video/VP8',
-      clockRate: 90000,
-    },
+    ...(ROUTER_VIDEO_H264_ONLY
+      ? []
+      : [
+          {
+            kind: 'video',
+            mimeType: 'video/VP8',
+            clockRate: 90000,
+          },
+        ]),
     {
       kind: 'video',
       mimeType: 'video/H264',
@@ -245,6 +272,12 @@ async function main() {
       },
     },
   ];
+
+  if (ROUTER_VIDEO_H264_ONLY) {
+    console.log(
+      'Router mediaCodecs: Opus + H264 only (MEDIASOUP_ROUTER_VIDEO_H264_ONLY=1)。浏览器与 ingest 均只能走 H264。',
+    );
+  }
 
   const router = await worker.createRouter({ mediaCodecs });
   const peers = new Map();
