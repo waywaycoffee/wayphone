@@ -6,10 +6,15 @@ HOST=${1:-127.0.0.1}
 PORT=${2:?usage: "$0 <host> <rtp_port>"}
 PT=${INGEST_PT:-96}
 SSRC=${INGEST_SSRC:-111222333}
-# 须与 server MEDIASOUP_INGEST_FFMPEG_LOCAL_PORT / plainTransport.connect 一致（默认 35500）
-LOCALPORT=${MEDIASOUP_INGEST_FFMPEG_LOCAL_PORT:-${INGEST_FFMPEG_LOCAL_PORT:-35500}}
-
-echo "向 rtp://${HOST}:${PORT} 持续发送 VP8（URL 内 localport=${LOCALPORT}；默认 SFU comedia 学源口，勿求与 connect 一致）。Ctrl+C 结束。" >&2
+# 默认不写 localport（见 ffmpeg-ingest-h264.sh）。connect 固定源口时再 export MEDIASOUP_INGEST_FFMPEG_LOCAL_PORT=35500
+LOCALPORT=${MEDIASOUP_INGEST_FFMPEG_LOCAL_PORT:-${INGEST_FFMPEG_LOCAL_PORT:-}}
+if [[ -n "${LOCALPORT}" && "${LOCALPORT}" != "0" ]]; then
+  RTP_URL="rtp://${HOST}:${PORT}?pkt_size=1200&rtcpport=${PORT}&localport=${LOCALPORT}"
+  echo "向 ${RTP_URL} 持续发送 VP8（localport=${LOCALPORT}）。Ctrl+C 结束。" >&2
+else
+  RTP_URL="rtp://${HOST}:${PORT}?pkt_size=1200&rtcpport=${PORT}"
+  echo "向 ${RTP_URL} 持续发送 VP8（未指定 localport）。Ctrl+C 结束。" >&2
+fi
 
 # rtcpport=PORT：与 mediasoup PlainTransport rtcpMux 一致
 # localport 放在 rtp:// 查询串：Linux 上 -f rtp -localport 常不生效（tcpdump 仍见随机源口）
@@ -22,4 +27,4 @@ exec ffmpeg -hide_banner -loglevel warning -re \
   -g 30 -keyint_min 30 \
   -payload_type "${PT}" -ssrc "${SSRC}" \
   -f rtp -pkt_size 1200 \
-  "rtp://${HOST}:${PORT}?pkt_size=1200&rtcpport=${PORT}&localport=${LOCALPORT}"
+  "${RTP_URL}"

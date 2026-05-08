@@ -90,8 +90,12 @@ echo "解析到 RTP 目标: ${HOST}:${PORT}（脚本: ${SCRIPT_BASENAME}）"
 if [[ -z "${CODEC_ENV}" ]]; then
   echo "提示: 若脚本选错（残留旧 VP8/H264 日志），请 export MEDIASOUP_INGEST_CODEC=h264|vp8 与 SFU 一致" >&2
 fi
-LP=${MEDIASOUP_INGEST_FFMPEG_LOCAL_PORT:-35500}
-echo "提示: rtp URL localport=${LP}（默认 SFU comedia 不要求固定源口；仅 MEDIASOUP_INGEST_PLAIN_CONNECT=1 时须 tcpdump 验证真从该口发出）" >&2
+LP=${MEDIASOUP_INGEST_FFMPEG_LOCAL_PORT:-}
+if [[ -n "${LP}" && "${LP}" != "0" ]]; then
+  echo "提示: 将使用 MEDIASOUP_INGEST_FFMPEG_LOCAL_PORT=${LP}（须与 Plain connect 一致；35500 被占用时可换端口）" >&2
+else
+  echo "提示: FFmpeg 默认不绑定 localport（避免 Address already in use）；comedia 模式无需固定源口" >&2
+fi
 # PT：取「最后一次出现的 PlainTransport H264/VP8」区块内的 PT=…（避免混用 101 与 103）
 PT_FROM_LOG=""
 if [[ "${CODEC_ENV}" == "h264" ]]; then

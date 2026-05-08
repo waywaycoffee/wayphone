@@ -8,9 +8,17 @@ HOST=${1:-127.0.0.1}
 PORT=${2:?usage: "$0 <host> <rtp_port> — port from server log \"Send RTP to\""}
 PT=${INGEST_PT:-96}
 SSRC=${INGEST_SSRC:-111222333}
-LOCALPORT=${MEDIASOUP_INGEST_FFMPEG_LOCAL_PORT:-${INGEST_FFMPEG_LOCAL_PORT:-35500}}
-
-echo "向 rtp://${HOST}:${PORT} 持续发送 H264（URL localport=${LOCALPORT}；默认 SFU comedia）。请保持本终端运行；结束请 Ctrl+C。" >&2
+# 默认不写 localport：避免 35500 被上次未退出的 FFmpeg 占用 → bind failed: Address already in use。
+# PlainTransport comedia 不要求固定源口。仅 MEDIASOUP_INGEST_PLAIN_CONNECT=1 且须与 connect 一致时再：
+#   export MEDIASOUP_INGEST_FFMPEG_LOCAL_PORT=35500
+LOCALPORT=${MEDIASOUP_INGEST_FFMPEG_LOCAL_PORT:-${INGEST_FFMPEG_LOCAL_PORT:-}}
+if [[ -n "${LOCALPORT}" && "${LOCALPORT}" != "0" ]]; then
+  RTP_URL="rtp://${HOST}:${PORT}?pkt_size=1200&rtcpport=${PORT}&localport=${LOCALPORT}"
+  echo "向 ${RTP_URL} 持续发送 H264（已绑定 localport=${LOCALPORT}）。请保持本终端运行；结束请 Ctrl+C。" >&2
+else
+  RTP_URL="rtp://${HOST}:${PORT}?pkt_size=1200&rtcpport=${PORT}"
+  echo "向 ${RTP_URL} 持续发送 H264（未指定 localport，由内核选源 UDP 口；SFU comedia 可学源口）。请保持本终端运行；结束请 Ctrl+C。" >&2
+fi
 
 # repeat-headers=1：周期性带 SPS/PPS，避免浏览器/WebRTC 解码器收不到参数集而一直黑屏
 # -bf 0、固定 GOP：减少 PlainTransport  ingest 与「无法向 FFmpeg 要关键帧」时的首帧解码问题
@@ -22,4 +30,4 @@ exec ffmpeg -hide_banner -loglevel warning -re \
   -x264-params "repeat-headers=1:aud=1" \
   -payload_type "${PT}" -ssrc "${SSRC}" \
   -f rtp -pkt_size 1200 \
-  "rtp://${HOST}:${PORT}?pkt_size=1200&rtcpport=${PORT}&localport=${LOCALPORT}"
+  "${RTP_URL}"
