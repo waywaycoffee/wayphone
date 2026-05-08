@@ -61,6 +61,14 @@ if [[ -z "${PORT}" ]] || [[ -z "${HOST}" ]]; then
   exit 1
 fi
 
+# 与当前容器配置一致：日志里常有「上次 VP8 / 上次 H264」残留，勿仅用 grep|tail 猜编码。
+# 与 docker-compose / export MEDIASOUP_INGEST_CODEC 对齐（推荐与运行中的 SFU 相同）。
+CODEC_ENV=$(echo "${MEDIASOUP_INGEST_CODEC:-}" | tr '[:upper:]' '[:lower:]')
+case "${CODEC_ENV}" in
+  h264) SCRIPT_BASENAME="ffmpeg-ingest-h264.sh" ;;
+  vp8) SCRIPT_BASENAME="ffmpeg-ingest-vp8.sh" ;;
+esac
+
 if [[ "${HOST}" == "0.0.0.0" ]]; then
   HOST="127.0.0.1"
 fi
@@ -79,10 +87,35 @@ elif [[ "${USE_LOOPBACK}" == "1" ]] && [[ "${HOST}" != "127.0.0.1" ]]; then
 fi
 
 echo "解析到 RTP 目标: ${HOST}:${PORT}（脚本: ${SCRIPT_BASENAME}）"
+if [[ -z "${CODEC_ENV}" ]]; then
+  echo "提示: 若脚本选错（残留旧 VP8/H264 日志），请 export MEDIASOUP_INGEST_CODEC=h264|vp8 与 SFU 一致" >&2
+fi
 LP=${MEDIASOUP_INGEST_FFMPEG_LOCAL_PORT:-35500}
 echo "提示: rtp URL localport=${LP}（默认 SFU comedia 不要求固定源口；仅 MEDIASOUP_INGEST_PLAIN_CONNECT=1 时须 tcpdump 验证真从该口发出）" >&2
-# 日志行：  PT=101 SSRC=111222333 — PT 须与 mediasoup Router 一致（多 video codec 时常为 101 而非 96）
-PT_FROM_LOG=$(echo "${STRIPPED}" | grep -oE 'PT=[0-9]+[[:space:]]+SSRC=' | tail -n1 | sed -n 's/PT=\([0-9]*\).*/\1/p')
+# PT：取「最后一次出现的 PlainTransport H264/VP8」区块内的 PT=…（避免混用 101 与 103）
+PT_FROM_LOG=""
+if [[ "${CODEC_ENV}" == "h264" ]]; then
+  PT_FROM_LOG=$(
+    printf '%s\n' "${STRIPPED}" | awk '
+      index($0, "PlainTransport H264") { buf = $0 "\n"; grab = 1; next }
+      index($0, "PlainTransport VP8") { grab = 0 }
+      grab { buf = buf $0 "\n" }
+      END { print buf }
+    ' | grep -oE 'PT=[0-9]+[[:space:]]+SSRC=' | tail -n1 | sed -n 's/PT=\([0-9]*\).*/\1/p'
+  )
+elif [[ "${CODEC_ENV}" == "vp8" ]]; then
+  PT_FROM_LOG=$(
+    printf '%s\n' "${STRIPPED}" | awk '
+      index($0, "PlainTransport VP8") { buf = $0 "\n"; grab = 1; next }
+      index($0, "PlainTransport H264") { grab = 0 }
+      grab { buf = buf $0 "\n" }
+      END { print buf }
+    ' | grep -oE 'PT=[0-9]+[[:space:]]+SSRC=' | tail -n1 | sed -n 's/PT=\([0-9]*\).*/\1/p'
+  )
+fi
+if [[ -z "${PT_FROM_LOG}" ]]; then
+  PT_FROM_LOG=$(echo "${STRIPPED}" | grep -oE 'PT=[0-9]+[[:space:]]+SSRC=' | tail -n1 | sed -n 's/PT=\([0-9]*\).*/\1/p')
+fi
 if [[ -n "${PT_FROM_LOG}" ]]; then
   export INGEST_PT="${PT_FROM_LOG}"
   echo "提示: 从日志解析 INGEST_PT=${INGEST_PT}（传给 ffmpeg-ingest；勿再用默认 96 除非日志如此）" >&2
