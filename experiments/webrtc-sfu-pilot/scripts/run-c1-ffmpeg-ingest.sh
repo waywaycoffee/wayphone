@@ -17,11 +17,8 @@ REPO_DIR=$(cd "$(dirname "$0")/.." && pwd)
 cd "$REPO_DIR"
 
 collect_logs() {
-  docker compose logs --tail=400 --no-color 2>&1 || true
-  cid=$(docker compose ps -q webrtc-sfu-pilot 2>/dev/null || true)
-  if [[ -n "${cid}" ]]; then
-    docker logs "${cid}" --tail=400 2>&1 || true
-  fi
+  # 只拉 compose 一份，避免与 docker logs 重复拼接 → STRIPPED 里多段「旧 ingest」干扰 grep|tail
+  docker compose logs --tail=500 --no-color webrtc-sfu-pilot 2>&1 || docker compose logs --tail=500 --no-color 2>&1 || true
 }
 
 LOG=$(collect_logs)
@@ -64,8 +61,8 @@ if [[ -z "${PORT}" ]] || [[ -z "${HOST}" ]]; then
 fi
 
 # 与当前容器配置一致：日志里常有「上次 VP8 / 上次 H264」残留，勿仅用 grep|tail 猜编码。
-# 与 docker-compose / export MEDIASOUP_INGEST_CODEC 对齐（推荐与运行中的 SFU 相同）。
-CODEC_ENV=$(echo "${MEDIASOUP_INGEST_CODEC:-}" | tr '[:upper:]' '[:lower:]')
+# 与 docker-compose / export MEDIASOUP_INGEST_CODEC 对齐；未 export 时默认 h264（与 server 默认一致，避免 CODEC_ENV 空导致 PT 解析走易混日志的 fallback）。
+CODEC_ENV=$(echo "${MEDIASOUP_INGEST_CODEC:-h264}" | tr '[:upper:]' '[:lower:]')
 case "${CODEC_ENV}" in
   h264) SCRIPT_BASENAME="ffmpeg-ingest-h264.sh" ;;
   vp8) SCRIPT_BASENAME="ffmpeg-ingest-vp8.sh" ;;
