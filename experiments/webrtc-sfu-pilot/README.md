@@ -24,6 +24,15 @@ npm start
 
 ## Docker（Linux，可选）
 
+若本目录存在 **`.env`** 且写过 **`PILOT_VERSION=`** / **`MEDIASOUP_INGEST_CODEC=`**，会**永久盖住** `docker-compose.yml` 里的默认值，表现为版本字母「追不上」、ingest _codec 与预期不一致。可执行：
+
+```bash
+bash scripts/pilot-env-unpin-compose-defaults.sh --dry-run   # 先看会删哪些行
+bash scripts/pilot-env-unpin-compose-defaults.sh
+```
+
+再 **`docker compose build --no-cache && docker compose up -d --force-recreate`**。新环境可复制 **`cp .env.pilot.example .env`** 只填 `MEDIASOUP_ANNOUNCED_IP` 等。
+
 ```bash
 export MEDIASOUP_ANNOUNCED_IP=192.168.x.x
 docker compose up --build
