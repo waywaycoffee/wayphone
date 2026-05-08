@@ -23,6 +23,26 @@ const ROUTER_VIDEO_H264_ONLY = process.env.MEDIASOUP_ROUTER_VIDEO_H264_ONLY === 
 /** MEDIASOUP_INGEST_TRACE=1 且 Layer C1 启用时：为 ingest Producer 打开 trace（rtp/keyframe/pli 等），日志量较大 */
 const INGEST_TRACE = process.env.MEDIASOUP_INGEST_TRACE === '1';
 
+/** MEDIASOUP_WORKER_DEBUG=1 → logLevel=debug + rtp/rtcp（可查「no suitable Producer」等）；或显式 MEDIASOUP_WORKER_LOG_LEVEL / MEDIASOUP_WORKER_LOG_TAGS=rtp,rtcp */
+function workerLogSettings() {
+  let logLevel = process.env.MEDIASOUP_WORKER_LOG_LEVEL || 'warn';
+  let logTags;
+  const raw = process.env.MEDIASOUP_WORKER_LOG_TAGS;
+  if (raw && String(raw).trim()) {
+    logTags = String(raw)
+      .split(',')
+      .map((t) => t.trim())
+      .filter(Boolean);
+  }
+  if (process.env.MEDIASOUP_WORKER_DEBUG === '1') {
+    logLevel = 'debug';
+    logTags = logTags && logTags.length ? logTags : ['rtp', 'rtcp'];
+  }
+  const settings = { logLevel, rtcMinPort: RTC_MIN_PORT, rtcMaxPort: RTC_MAX_PORT };
+  if (logTags && logTags.length) settings.logTags = logTags;
+  return settings;
+}
+
 function listenIpConfig() {
   const announcedIp = process.env.MEDIASOUP_ANNOUNCED_IP;
   if (announcedIp && announcedIp.length > 0) {
@@ -238,11 +258,15 @@ function createPeerState() {
 }
 
 async function main() {
-  const worker = await mediasoup.createWorker({
-    logLevel: 'warn',
-    rtcMinPort: RTC_MIN_PORT,
-    rtcMaxPort: RTC_MAX_PORT,
-  });
+  const wLog = workerLogSettings();
+  const worker = await mediasoup.createWorker(wLog);
+  if (wLog.logTags && wLog.logTags.length) {
+    console.log(
+      'mediasoup Worker log:',
+      `level=${wLog.logLevel}`,
+      `tags=${wLog.logTags.join(',')}`,
+    );
+  }
 
   worker.on('died', (error) => {
     console.error('mediasoup Worker died:', error);
