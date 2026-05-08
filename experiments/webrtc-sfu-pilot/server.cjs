@@ -25,7 +25,7 @@ const HTTP_LISTEN_HOST = process.env.HTTP_LISTEN_HOST || '0.0.0.0';
 const RTC_MIN_PORT = Number(process.env.MEDIASOUP_RTC_MIN_PORT || 40000);
 const RTC_MAX_PORT = Number(process.env.MEDIASOUP_RTC_MAX_PORT || 49999);
 /** 与前端/镜像一致；`curl http://<EIP>:3000/__pilot_version` 可验证是否已部署新镜像（与浏览器缓存无关） */
-const PILOT_VERSION = process.env.PILOT_VERSION || 'pilot-20260207m';
+const PILOT_VERSION = process.env.PILOT_VERSION || 'pilot-20260207p';
 
 /**
  * MEDIASOUP_ROUTER_VIDEO_H264_ONLY=1：Router 只注册 H264，不注册 VP8（排查 PT/codec 映射时减少变量）。
@@ -36,7 +36,7 @@ const ROUTER_VIDEO_H264_ONLY = process.env.MEDIASOUP_ROUTER_VIDEO_H264_ONLY === 
 /** MEDIASOUP_INGEST_TRACE=1 且 Layer C1 启用时：为 ingest Producer 打开 trace（rtp/keyframe/pli 等），日志量较大 */
 const INGEST_TRACE = process.env.MEDIASOUP_INGEST_TRACE === '1';
 
-/** MEDIASOUP_WORKER_DEBUG=1 → logLevel=debug + rtp/rtcp（可查「no suitable Producer」等）；或显式 MEDIASOUP_WORKER_LOG_LEVEL / MEDIASOUP_WORKER_LOG_TAGS=rtp,rtcp */
+/** MEDIASOUP_WORKER_DEBUG=1 → logLevel=debug；LOG_TAGS 会与默认合并（避免 .env 里只写 rtp,rtcp 盖掉 info/rtx） */
 function workerLogSettings() {
   let logLevel = process.env.MEDIASOUP_WORKER_LOG_LEVEL || 'warn';
   let logTags;
@@ -49,8 +49,10 @@ function workerLogSettings() {
   }
   if (process.env.MEDIASOUP_WORKER_DEBUG === '1') {
     logLevel = 'debug';
-    // info：部分 Transport 日志；rtx：NACK 等；与 rtp/rtcp 一起更易看到丢包/匹配问题
-    logTags = logTags && logTags.length ? logTags : ['info', 'rtp', 'rtcp', 'rtx'];
+    const defaults = ['info', 'rtp', 'rtcp', 'rtx'];
+    const merged = new Set(logTags && logTags.length ? logTags : []);
+    for (const t of defaults) merged.add(t);
+    logTags = Array.from(merged);
   }
   const settings = { logLevel, rtcMinPort: RTC_MIN_PORT, rtcMaxPort: RTC_MAX_PORT };
   if (logTags && logTags.length) settings.logTags = logTags;
@@ -279,6 +281,12 @@ async function main() {
       'mediasoup Worker log:',
       `level=${wLog.logLevel}`,
       `tags=${wLog.logTags.join(',')}`,
+    );
+  }
+  if (process.env.MEDIASOUP_WORKER_DEBUG === '1') {
+    console.log(
+      'mediasoup Node DEBUG (worker C++ stdout 经 debug 包输出，须含 mediasoup:Worker):',
+      process.env.DEBUG || '(unset — 旧镜像或未注入)',
     );
   }
 
