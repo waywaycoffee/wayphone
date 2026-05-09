@@ -60,7 +60,10 @@ if [[ -z "${ANDROID_SERIAL}" ]]; then
     ADB_FLAGS=(-s "${ANDROID_SERIAL}")
     echo "提示: 自动使用 ANDROID_SERIAL=${ANDROID_SERIAL}（多设备时请事先 export ANDROID_SERIAL）" >&2
   elif [[ "${_count}" -gt 1 ]]; then
-    echo "提示: 多台 device，请 export ANDROID_SERIAL=序列号（例如 127.0.0.1:5555）再运行" >&2
+    echo "error: 多台 adb device，未指定序列号时 adb exec-out 会报「more than one device」且无画面进 FFmpeg。" >&2
+    echo "请先: export ANDROID_SERIAL=127.0.0.1:5555   # 或 adb devices 里 Redroid 那一行的序列号" >&2
+    "${ADB_BIN}" devices >&2
+    exit 1
   fi
 fi
 

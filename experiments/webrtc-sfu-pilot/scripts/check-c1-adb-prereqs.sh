@@ -20,6 +20,11 @@ else
   fail "adb 无 device 状态（请 adb connect 127.0.0.1:5555 等）"
 fi
 
+_dc=$(adb devices 2>/dev/null | awk 'NR>1 && $2=="device"{c++} END{print c+0}')
+if [[ -z "${ANDROID_SERIAL:-}" && "${_dc}" -gt 1 ]]; then
+  fail "多台 adb device（${_dc} 台）但未设置 ANDROID_SERIAL；exec-out 会失败。请: export ANDROID_SERIAL=127.0.0.1:5555"
+fi
+
 if docker compose ps --status running 2>/dev/null | grep -q .; then
   echo "✓ docker compose 有运行中服务（请确认含 webrtc-sfu-pilot 且 MEDIASOUP_INGEST_TEST=1）"
 else
