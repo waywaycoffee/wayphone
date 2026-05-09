@@ -117,7 +117,20 @@ docker compose logs --tail=30
 **推荐（默认）**：在 **与 Docker 同一台 ECS 宿主机**、**本目录**执行 **`bash scripts/run-c1-ffmpeg-ingest.sh`**（或 **`npm run c1:ingest`**）。脚本会读取 **`docker compose logs`**（及容器 `docker logs`），解析当次 **`ffmpeg-ingest-h264.sh <host> <port>`** 或 **`mediasoup RTP tuple:`**，再启动 FFmpeg，**避免容器重启后端口变化还要手抄**。  
 **备选**：终端里若已打印 **`bash scripts/ffmpeg-ingest-h264.sh …`** 或 **`ffmpeg-ingest-vp8.sh`**，也可原样执行（排错、或无 compose 时）。浏览器打开页面后 **只点「仅观看」**。说明：**`docs/layer-c-roadmap.md`** §C1.1。
 
+**掌厅 APK 路径**：放在 **`source app/ChinaMobile10086.apk`**（相对本目录 `experiments/webrtc-sfu-pilot/`；目录名含空格，路径请加引号）。  
+- 在 **本目录** 安装：`adb -s 127.0.0.1:5555 install -r -g "source app/ChinaMobile10086.apk"`  
+- 在 **仓库根目录** 安装：`adb -s 127.0.0.1:5555 install -r -g "experiments/webrtc-sfu-pilot/source app/ChinaMobile10086.apk"`  
+（`*.apk` 已写入仓库根 `.gitignore`，勿 `git add` APK。）  
+
+**彩条 → Redroid/真机画面（掌厅等）**：宿主机需 **`adb devices` 为 `device`**（与 Redroid 同机时常为 `127.0.0.1:5555`）。可先 **`npm run c1:check:adb`** 自检。在同一目录执行 **`npm run c1:ingest:adb -- --local`**（等价于 `C1_INGEST_SOURCE=adb` + `run-c1`），将用 **`scripts/ffmpeg-ingest-h264-adb-screenrecord.sh`**：`adb exec-out screenrecord --output-format=h264` 管道进 FFmpeg，**libx264 baseline** 重编码后仍发往 **同一 PlainTransport RTP 端口**（ingest 仅 H264；若 `.env` 为 VP8 请改 **h264** 与 Router 一致）。多设备时 **`export ANDROID_SERIAL=序列号`**；分辨率/码率见脚本内 **`SCREENRECORD_*`** 环境变量。`screenrecord` 行为随 ROM 变化，若黑屏先看 **`adb exec-out screenrecord --output-format=h264 -`** 是否在本机可持续出字节。
+
 **黑屏但日志里 `transport.getStats` 有 bytes、`framesDecoded=0`**：多为 FFmpeg→H264→Chrome 解码不兼容；可设 **`MEDIASOUP_INGEST_CODEC=vp8`** 并 **`run-c1-ffmpeg-ingest.sh`**。**同 ECS 宿主机**上 FFmpeg 请打 **`127.0.0.1:端口`**（脚本默认如此），勿长期用「本机 EIP」——云上 **UDP hairpin** 常导致 SFU 收不到 RTP。ECS 的 **`ffmpeg` 需带 libvpx**（一般 `apt install ffmpeg` 即可）。
+
+#### C1 实践经验（排障与部署习惯）
+
+曾出现：**FFmpeg 在推、PlainTransport `bytesReceived` 很大，但 `rtpBytesReceived=0`、浏览器黑屏**。常见组合原因包括：**镜像内仍是旧 `server.cjs`（只 `git pull` 未 `build`）**、**ingest 建议 `MEDIASOUP_INGEST_RTCP_MUX=0` 与 FFmpeg 三端口对齐**、**`run-c1` 脚本版本过旧（`pipefail` + grep）**。
+
+**完整总结（现象表、根因、清单、验证命令）见：** [`docs/layer-c1-lessons-learned.md`](docs/layer-c1-lessons-learned.md)。
 
 ### 公网 HTTPS 一条链接（可发摄像头）
 

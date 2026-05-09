@@ -73,7 +73,7 @@ docker compose logs -f --tail=40
    若脚本解析失败，再 **`docker compose logs --tail=80`** 查是否含 **`ffmpeg-ingest-h264.sh`** 一行或 **`mediasoup RTP tuple:`**。  
 4. 浏览器打开试点页 → **只点「仅观看」**（不要点「发布摄像头」），远端格应出现 **FFmpeg 测试图案**。  
 
-与 Layer B 并行时：**ingest producer** 与 **摄像头 producer** 会同时出现在列表；PoC 只做一路 ingest 时可不点「发布摄像头」。详见 **`experiments/webrtc-sfu-pilot/README.md`**。
+与 Layer B 并行时：**ingest producer** 与 **摄像头 producer** 会同时出现在列表；PoC 只做一路 ingest 时可不点「发布摄像头」。详见 **`experiments/webrtc-sfu-pilot/README.md`**；**Docker 部署与 C1 排障经验总结**：**[`experiments/webrtc-sfu-pilot/docs/layer-c1-lessons-learned.md`](../experiments/webrtc-sfu-pilot/docs/layer-c1-lessons-learned.md)**。
 
 ---
 

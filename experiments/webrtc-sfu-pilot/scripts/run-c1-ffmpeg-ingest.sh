@@ -68,6 +68,14 @@ case "${CODEC_ENV}" in
   vp8) SCRIPT_BASENAME="ffmpeg-ingest-vp8.sh" ;;
 esac
 
+# 真机/Redroid 画面：ADB screenrecord → RTP（仅 H264）。用法：C1_INGEST_SOURCE=adb npm run c1:ingest -- --local
+if [[ "${C1_INGEST_SOURCE:-}" == "adb" || "${C1_INGEST_SOURCE:-}" == "android" ]]; then
+  SCRIPT_BASENAME="ffmpeg-ingest-h264-adb-screenrecord.sh"
+  if [[ "${CODEC_ENV}" == "vp8" ]]; then
+    echo "提示: C1_INGEST_SOURCE=adb 仅支持 H264 ingest，已改用 ffmpeg-ingest-h264-adb-screenrecord.sh（与 MEDIASOUP_INGEST_CODEC=vp8 并存时请改回 h264）。" >&2
+  fi
+fi
+
 # 与 docker-compose 同名的变量常被 source 进 shell（默认 35500 是给容器 Plain connect 用）。
 # 默认 comedia 时 FFmpeg 不应绑 localport，否则易「Address already in use」且与 SFU 学习源口无关。
 if [[ "${MEDIASOUP_INGEST_PLAIN_CONNECT:-}" != "1" ]]; then
@@ -136,7 +144,8 @@ if [[ -n "${PT_FROM_LOG}" ]]; then
   export INGEST_PT="${PT_FROM_LOG}"
   echo "提示: 从日志解析 INGEST_PT=${INGEST_PT}（传给 ffmpeg-ingest；勿再用默认 96 除非日志如此）" >&2
 fi
-chmod +x "${REPO_DIR}/scripts/ffmpeg-ingest-h264.sh" "${REPO_DIR}/scripts/ffmpeg-ingest-vp8.sh" 2>/dev/null || true
+chmod +x "${REPO_DIR}/scripts/ffmpeg-ingest-h264.sh" "${REPO_DIR}/scripts/ffmpeg-ingest-vp8.sh" \
+  "${REPO_DIR}/scripts/ffmpeg-ingest-h264-adb-screenrecord.sh" 2>/dev/null || true
 RTCP_PORT_ARG=""
 if [[ -n "${RTCP_FROM_LOG}" ]]; then
   RTCP_PORT_ARG="${RTCP_FROM_LOG}"

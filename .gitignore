@@ -9,3 +9,5 @@ mc10086_log.txt
 # WebRTC SFU 试点（依赖勿提交）
 experiments/webrtc-sfu-pilot/node_modules/
 experiments/webrtc-sfu-pilot/public/mediasoup-client.esm.js
+# 掌厅等本地 APK（勿提交二进制）
+experiments/webrtc-sfu-pilot/source app/*.apk

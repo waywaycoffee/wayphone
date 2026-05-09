@@ -232,7 +232,7 @@ async function setupPlainIngest({ router, peers, ingestCtx, broadcastFn }) {
 
   console.log('');
   console.log(
-    `=== Layer C1 ingest (PlainTransport ${useVp8 ? 'VP8' : 'H264'}, FFmpeg test pattern) ===`,
+    `=== Layer C1 ingest (PlainTransport ${useVp8 ? 'VP8' : 'H264'}, FFmpeg test pattern 或 ADB 真屏) ===`,
   );
   console.log(
     'MEDIASOUP_INGEST_CODEC:',
@@ -241,6 +241,11 @@ async function setupPlainIngest({ router, peers, ingestCtx, broadcastFn }) {
   console.log(
     `Layer C1: ingest PT=${RTP_PAYLOAD_TYPE}（须与 FFmpeg -payload_type 一致；由 Router preferredPayloadType 推导，勿再固定写 96）`,
   );
+  if (!useVp8) {
+    console.log(
+      'Redroid/真机掌厅画面: 宿主机 adb devices 为 device 后 → npm run c1:ingest:adb -- --local（C1_INGEST_SOURCE=adb，见 scripts/ffmpeg-ingest-h264-adb-screenrecord.sh）',
+    );
+  }
   console.log(
     '推荐: bash scripts/run-c1-ffmpeg-ingest.sh  # 从 docker compose logs 解析 host/port 并启动 FFmpeg',
   );
