@@ -437,11 +437,16 @@ function connectWs() {
     log(`前端构建 ${readPilotFrontendVersion()} | WebSocket 已连接 ${wsUrl}`);
     void fetch(`/__pilot_version?t=${Date.now()}`, { cache: 'no-store' })
       .then((r) => r.text())
-      .then((t) =>
-        log(
-          `服务端 __pilot_version: ${t.trim()}（与上项不一致 = 镜像内未跑 build:client 或仅重启未重建；ECS: docker compose build --no-cache）`,
-        ),
-      )
+      .then((t) => {
+        const sv = t.trim();
+        const fv = readPilotFrontendVersion();
+        let line = `服务端 __pilot_version: ${sv}`;
+        if (sv !== fv) {
+          line +=
+            ' → 与前端不一致：镜像内可能未跑 build:client 或仅重启未重建；ECS: docker compose build --no-cache';
+        }
+        log(line);
+      })
       .catch((e) => log(`__pilot_version 拉取失败: ${e.message}`));
     attachWsHandlers();
   });
