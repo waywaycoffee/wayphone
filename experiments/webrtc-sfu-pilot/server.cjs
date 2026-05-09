@@ -596,6 +596,29 @@ async function main() {
                 } catch (e) {
                   console.warn('Layer C1 producer getStats failed:', e);
                 }
+                // 下行：SFU→浏览器。ingest 正常但浏览器 video-bytes 极低时，看此处是否 outbound 在涨。
+                try {
+                  const cs = await consumer.getStats();
+                  const arr = Array.isArray(cs) ? cs : [];
+                  const out = arr.find((s) => s.type === 'outbound-rtp' && s.kind === 'video');
+                  if (out) {
+                    const ob = Number(out.byteCount ?? out.bytesSent ?? 0);
+                    console.log(
+                      `Layer C1 SFU→浏览器 (${phase}): consumer outbound-rtp packetCount=${out.packetCount} byteCount=${ob} bitrate=${out.bitrate}`,
+                    );
+                    if (ob < 50000 && rtpRx > 1_000_000) {
+                      console.warn(
+                        'Layer C1: ingest 字节很大但 consumer outbound 很小 — 查 MEDIASOUP_ANNOUNCED_IP（须为浏览器可达的公网 IP）、安全组 UDP 40000–49999、客户端网络是否拦 UDP；可试本机浏览器或 HTTPS+443。',
+                      );
+                    }
+                  } else {
+                    console.warn(
+                      `Layer C1 consumer getStats (${phase}) 无 outbound-rtp/video，条目: ${arr.map((s) => `${s.type}/${s.kind || '-'}`).join(', ') || '(空)'}`,
+                    );
+                  }
+                } catch (e) {
+                  console.warn('Layer C1 consumer getStats failed:', e.message || e);
+                }
               };
               setTimeout(() => void logIngestStats('1.5s'), 1500);
               setTimeout(() => void logIngestStats('5s'), 5000);
