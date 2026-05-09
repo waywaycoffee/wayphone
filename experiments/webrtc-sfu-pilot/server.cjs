@@ -574,29 +574,29 @@ async function main() {
                     console.warn(
                       `Layer C1 ingest producer getStats (${phase}): [] — ${hint}`,
                     );
-                    return;
-                  }
-                  const v = stats.find((s) => s.type === 'inbound-rtp' && s.kind === 'video');
-                  if (v) {
-                    console.log(
-                      `Layer C1 FFmpeg→SFU (${phase}):`,
-                      `packetCount=${v.packetCount} byteCount=${v.byteCount} bitrate=${v.bitrate}`,
-                    );
-                    if (Number(v.packetCount) === 0) {
-                      console.warn(
-                        'Layer C1: ingest 收包为 0 — 查 FFmpeg 与端口、rtcpMux(rtcpport=)。',
+                  } else {
+                    const v = stats.find((s) => s.type === 'inbound-rtp' && s.kind === 'video');
+                    if (v) {
+                      console.log(
+                        `Layer C1 FFmpeg→SFU (${phase}):`,
+                        `packetCount=${v.packetCount} byteCount=${v.byteCount} bitrate=${v.bitrate}`,
+                      );
+                      if (Number(v.packetCount) === 0) {
+                        console.warn(
+                          'Layer C1: ingest 收包为 0 — 查 FFmpeg 与端口、rtcpMux(rtcpport=)。',
+                        );
+                      }
+                    } else {
+                      console.log(
+                        `Layer C1 ingest producer getStats (${phase}) 无 video inbound-rtp，条目:`,
+                        stats.map((s) => `${s.type}/${s.kind || '-'}`).join(', '),
                       );
                     }
-                  } else {
-                    console.log(
-                      `Layer C1 ingest producer getStats (${phase}) 无 video inbound-rtp，条目:`,
-                      stats.map((s) => `${s.type}/${s.kind || '-'}`).join(', '),
-                    );
                   }
                 } catch (e) {
                   console.warn('Layer C1 producer getStats failed:', e);
                 }
-                // 下行：SFU→浏览器。ingest 正常但浏览器 video-bytes 极低时，看此处是否 outbound 在涨。
+                // 下行：SFU→浏览器。勿在 producer getStats 空时提前 return，否则本段永不执行。
                 try {
                   const cs = await consumer.getStats();
                   const arr = Array.isArray(cs) ? cs : [];
@@ -604,7 +604,7 @@ async function main() {
                   if (out) {
                     const ob = Number(out.byteCount ?? out.bytesSent ?? 0);
                     console.log(
-                      `Layer C1 SFU→浏览器 (${phase}): consumer outbound-rtp packetCount=${out.packetCount} byteCount=${ob} bitrate=${out.bitrate}`,
+                      `Layer C1 SFU-to-browser (${phase}): consumer outbound-rtp packetCount=${out.packetCount} byteCount=${ob} bitrate=${out.bitrate}`,
                     );
                     if (ob < 50000 && rtpRx > 1_000_000) {
                       console.warn(
