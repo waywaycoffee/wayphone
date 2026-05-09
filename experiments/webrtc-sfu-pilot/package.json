@@ -8,6 +8,7 @@
     "node": ">=20"
   },
   "scripts": {
+    "prestart": "npm run build:client",
     "start": "node server.cjs",
     "build:client": "node scripts/sync-pilot-version.cjs && esbuild client/entry.mjs --bundle --format=esm --outfile=public/mediasoup-client.esm.js --platform=browser",
     "c1:ingest": "bash scripts/run-c1-ffmpeg-ingest.sh",

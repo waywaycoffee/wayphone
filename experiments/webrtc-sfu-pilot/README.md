@@ -53,6 +53,8 @@ docker compose build --no-cache && docker compose up -d --force-recreate
 
 **部署指纹（前后端一致）**：只在 **`package.json` 的 `pilotVersion`** 改一处；**`npm run build:client`** 会先跑 **`scripts/sync-pilot-version.cjs`**，把 **`public/index.html`** 里占位 **`pilot-00000000sync`** 全部替换为该值（含 `<meta name="pilot-frontend-version">` 与 `app.mjs` 的 `?v=`）。**`public/app.mjs`** 运行时读 meta，仓库内不写死版本串。**`server.cjs`** 的 **`__pilot_version`** 也读 `package.json`。**Dockerfile** 在 `COPY public` 后执行 **`npm run build:client`**，镜像内会自动对齐。`.env` 里**不要**写 **`PILOT_VERSION`**，除非要临时覆盖。
 
+**本地跑 SFU**：请用 **`npm start`**（会先执行 **`prestart` → `build:client`**，同步版本并打包 `mediasoup-client.esm.js`）。不要直接 **`node server.cjs`**，否则 `index.html` 可能仍是占位 **`pilot-00000000sync`** 且缺少 bundle。
+
 ## Docker（Linux，可选）
 
 若本目录存在 **`.env`** 且写过 **`PILOT_VERSION=`** / **`MEDIASOUP_INGEST_CODEC=`**，会**永久盖住** `docker-compose.yml` 里的默认值，表现为版本字母「追不上」、ingest _codec 与预期不一致。可执行：
