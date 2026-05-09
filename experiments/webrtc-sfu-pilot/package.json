@@ -13,6 +13,7 @@
     "build:client": "node scripts/sync-pilot-version.cjs && esbuild client/entry.mjs --bundle --format=esm --outfile=public/mediasoup-client.esm.js --platform=browser",
     "c1:ingest": "bash scripts/run-c1-ffmpeg-ingest.sh",
     "c1:ingest:adb": "env C1_INGEST_SOURCE=adb bash scripts/run-c1-ffmpeg-ingest.sh",
+    "c1:ingest:adb:loop": "bash scripts/run-c1-ingest-adb-loop.sh",
     "c1:check:adb": "bash scripts/check-c1-adb-prereqs.sh",
     "pilot:ingest-debug": "bash scripts/pilot-ingest-debug.sh"
   },
