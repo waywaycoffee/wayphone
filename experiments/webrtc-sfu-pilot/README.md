@@ -51,7 +51,7 @@ docker compose config | grep -E 'MEDIASOUP_|PILOT_VERSION'
 docker compose build --no-cache && docker compose up -d --force-recreate
 ```
 
-**部署指纹（前后端一致）**：只在 **`package.json` 的 `pilotVersion`** 改一处（如 `pilot-20260207q`），再执行 **`npm run build:client`**（会先跑 `scripts/sync-pilot-version.cjs`，把 **`public/app.mjs`** / **`index.html`** 里同类 token 写齐）。**`server.cjs`** 的 **`__pilot_version`** 也读同一字段。`.env` 里**不要**写 **`PILOT_VERSION`**，除非要临时覆盖；`docker-compose` 默认不再注入该变量。
+**部署指纹（前后端一致）**：只在 **`package.json` 的 `pilotVersion`** 改一处；**`npm run build:client`** 会先跑 **`scripts/sync-pilot-version.cjs`**，把 **`public/index.html`** 里占位 **`pilot-00000000sync`** 全部替换为该值（含 `<meta name="pilot-frontend-version">` 与 `app.mjs` 的 `?v=`）。**`public/app.mjs`** 运行时读 meta，仓库内不写死版本串。**`server.cjs`** 的 **`__pilot_version`** 也读 `package.json`。**Dockerfile** 在 `COPY public` 后执行 **`npm run build:client`**，镜像内会自动对齐。`.env` 里**不要**写 **`PILOT_VERSION`**，除非要临时覆盖。
 
 ## Docker（Linux，可选）
 

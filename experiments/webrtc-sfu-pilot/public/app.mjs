@@ -1,7 +1,11 @@
 import { Device } from './mediasoup-client.esm.js';
 
-/** 与 index.html 中 app.mjs 查询参数同步 bump，便于确认已加载新前端 */
-const FRONTEND_BUILD = 'pilot-20260207s';
+/** 与 index.html `<meta name="pilot-frontend-version">` 一致；由 npm run build:client 从 package.json 写入 */
+function readPilotFrontendVersion() {
+  const m = document.querySelector('meta[name="pilot-frontend-version"]');
+  const c = m?.getAttribute('content')?.trim();
+  return c && c.length > 0 ? c : 'unknown';
+}
 
 const logEl = document.getElementById('log');
 const localVideo = document.getElementById('localVideo');
@@ -430,12 +434,12 @@ document.getElementById('btnWatch').addEventListener('click', async () => {
 function connectWs() {
   ws = new WebSocket(wsUrl);
   ws.addEventListener('open', () => {
-    log(`前端构建 ${FRONTEND_BUILD} | WebSocket 已连接 ${wsUrl}`);
+    log(`前端构建 ${readPilotFrontendVersion()} | WebSocket 已连接 ${wsUrl}`);
     void fetch(`/__pilot_version?t=${Date.now()}`, { cache: 'no-store' })
       .then((r) => r.text())
       .then((t) =>
         log(
-          `服务端 __pilot_version: ${t.trim()}（与「前端构建」差一个字母 = 只重建了容器未重建镜像时 COPY 的 public；ECS: docker compose build --no-cache）`,
+          `服务端 __pilot_version: ${t.trim()}（与上项不一致 = 镜像内未跑 build:client 或仅重启未重建；ECS: docker compose build --no-cache）`,
         ),
       )
       .catch((e) => log(`__pilot_version 拉取失败: ${e.message}`));
