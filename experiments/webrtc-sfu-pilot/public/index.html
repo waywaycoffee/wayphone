@@ -28,7 +28,7 @@
 </head>
 <body>
   <h1>WebRTC SFU 试点（Layer B：信令 + mediasoup-client）</h1>
-  <p class="note" style="color:#fcd34d">页面版本 pilot-20260207q；ingest：多路 video 时优先订阅 plain-ingest-test</p>
+  <p class="note" style="color:#fcd34d">页面版本 pilot-20260207r；ingest：多路 video 时优先订阅 plain-ingest-test</p>
   <p class="note">
     本页通过 WebSocket 与 mediasoup 完成 <strong>摄像头 → SFU → 另一浏览器 Tab</strong> 的最小闭环。
     可选 Layer C1：服务端 <code>MEDIASOUP_INGEST_TEST=1</code> + FFmpeg 时，可<strong>只「仅观看」</strong>收测试流（见 README）。不包含 Redroid 屏幕进 SFU（仍在 Layer C）。需先执行 <code>npm install</code> 与 <code>npm run build:client</code> 生成
@@ -50,6 +50,6 @@
     </div>
   </div>
   <div id="log"></div>
-  <script type="module" src="/app.mjs?v=pilot-20260207q"></script>
+  <script type="module" src="/app.mjs?v=pilot-20260207r"></script>
 </body>
 </html>

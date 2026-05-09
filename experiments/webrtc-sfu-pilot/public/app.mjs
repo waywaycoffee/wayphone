@@ -1,7 +1,7 @@
 import { Device } from './mediasoup-client.esm.js';
 
 /** 与 index.html 中 app.mjs 查询参数同步 bump，便于确认已加载新前端 */
-const FRONTEND_BUILD = 'pilot-20260207q';
+const FRONTEND_BUILD = 'pilot-20260207r';
 
 const logEl = document.getElementById('log');
 const localVideo = document.getElementById('localVideo');
@@ -313,6 +313,16 @@ async function consumeIfViewer(producerId) {
     },
     { once: true },
   );
+  // controls 下「一直转圈」多为：有 SRTP 字节但解码不出帧（framesDecoded=0）→ readyState 上不去
+  remoteVideo.addEventListener('waiting', () => {
+    log(
+      '远端 video: waiting（缓冲/等可解码帧；若长时间如此请看日志 framesDecoded 与 [1s]/[3s] video-bytes）',
+    );
+  });
+  remoteVideo.addEventListener('stalled', () => log('远端 video: stalled（网络/解码停滞）'));
+  remoteVideo.addEventListener('canplay', () => {
+    log(`远端 video: canplay ${remoteVideo.videoWidth}x${remoteVideo.videoHeight}`);
+  });
   remoteVideo.addEventListener(
     'playing',
     () => {
