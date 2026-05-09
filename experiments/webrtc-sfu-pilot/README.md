@@ -128,6 +128,8 @@ docker compose logs --tail=30
 
 **ingest 自行断开**（`pgrep ffmpeg` 突然无输出）：多为 **adb 管道 EOF**（`screenrecord` 结束、设备断连、Redroid 限制）。可改用 **`npm run c1:ingest:adb:loop`**（`scripts/run-c1-ingest-adb-loop.sh`）：退出后 **`C1_INGEST_LOOP_SLEEP` 秒（默认 2）** 自动重拉 `run-c1` 并再起 FFmpeg。**注意**：若 **SFU 容器重启、RTP 端口变了**，循环只会重启 FFmpeg，仍可能打到旧端口；此时应 **停掉 loop → 再起 pilot → 再起 loop**。排错时用 **`ADB_SCREENRECORD_STDERR=/dev/stderr`**。
 
+**查「为什么退出」**（`git pull` 后）：ADB ingest 脚本在管道结束时会向 stderr 打一行 **`ingest 管道结束: adb_exit=… ffmpeg_exit=…`**。再配合：**`ADB_SCREENRECORD_STDERR=/dev/stderr`**（看 screenrecord 报错）、**`FFMPEG_LOGLEVEL=info`**（看 FFmpeg 细节）、宿主机 **`dmesg | tail`**（是否 OOM killer）、**`adb devices`**（是否仍 `device`）。常见：**screenrecord 自行结束**（部分 ROM 时长/策略）→ adb 侧先关 → FFmpeg stdin EOF → 进程退出。
+
 **黑屏但日志里 `transport.getStats` 有 bytes、`framesDecoded=0`**：多为 FFmpeg→H264→Chrome 解码不兼容；可设 **`MEDIASOUP_INGEST_CODEC=vp8`** 并 **`run-c1-ffmpeg-ingest.sh`**。**同 ECS 宿主机**上 FFmpeg 请打 **`127.0.0.1:端口`**（脚本默认如此），勿长期用「本机 EIP」——云上 **UDP hairpin** 常导致 SFU 收不到 RTP。ECS 的 **`ffmpeg` 需带 libvpx**（一般 `apt install ffmpeg` 即可）。
 
 **`video-bytes` 只有约 1 万且 1s/3s 几乎不涨**：多表示 **SFU 侧 ingest 没在持续收 RTP**（或端口/进程不是当前这次启动的），不是单纯「解码慢」。请 **先** 在 ECS 上看容器日志（仅观看后约 2s 会打两行）：  

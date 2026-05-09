@@ -14,8 +14,10 @@
 #   SCREENRECORD_PROBE_SIZE     FFmpeg -probesize，默认 32M（管道上 SPS 可能较晚，过小会「unspecified size」且无输出流）
 #   SCREENRECORD_ANALYZE_US     FFmpeg -analyzeduration（微秒），默认 20M
 #   ADB_SCREENRECORD_STDERR     默认 discard：adb screenrecord 的 stderr 不进终端；设为 /dev/stderr 便于排错
+#   FFMPEG_LOGLEVEL          默认 warning；排错可 export FFMPEG_LOGLEVEL=info
 #
 # 说明：screenrecord 行为随 Android/Redroid 版本变化；若管道断流，可缩短 TIME_LIMIT 用外层循环重启（另做）。
+# 退出时：脚本会向 stderr 打印 adb / ffmpeg 的退出码（常见：adb=0 ffmpeg=0 为 stdin 正常 EOF；ffmpeg 非 0 多为编码/RTP；adb 非 0 多为设备断连）。
 set -euo pipefail
 
 HOST=${1:-127.0.0.1}
@@ -32,6 +34,7 @@ SCREENRECORD_TIME_LIMIT=${SCREENRECORD_TIME_LIMIT:-0}
 SCREENRECORD_PROBE_SIZE=${SCREENRECORD_PROBE_SIZE:-33554432}
 SCREENRECORD_ANALYZE_US=${SCREENRECORD_ANALYZE_US:-20000000}
 ADB_SCREENRECORD_STDERR=${ADB_SCREENRECORD_STDERR:-discard}
+FFMPEG_LOGLEVEL=${FFMPEG_LOGLEVEL:-warning}
 
 LOCALPORT=${MEDIASOUP_INGEST_FFMPEG_LOCAL_PORT:-${INGEST_FFMPEG_LOCAL_PORT:-}}
 if [[ -n "${LOCALPORT}" && "${LOCALPORT}" != "0" ]]; then
@@ -84,8 +87,10 @@ fi
 
 # screenrecord 输出为 annex B 字节流；经 libx264 重编码为 baseline + repeat-headers，与 ingest/浏览器更稳。
 # stderr 默认丢弃；排错: ADB_SCREENRECORD_STDERR=/dev/stderr
+# 不用 exec：以便打印 adb/ffmpeg 退出码（exec 时 shell 已替换，无法记录）。
 set -o pipefail
-"${ADB_BIN}" "${ADB_FLAGS[@]}" "${RECORD_CMD[@]}" 2>"${ADB_ERR_REDIRECT}" | exec ffmpeg -hide_banner -loglevel warning \
+set +e
+"${ADB_BIN}" "${ADB_FLAGS[@]}" "${RECORD_CMD[@]}" 2>"${ADB_ERR_REDIRECT}" | ffmpeg -hide_banner -loglevel "${FFMPEG_LOGLEVEL}" \
   -probesize "${SCREENRECORD_PROBE_SIZE}" -analyzeduration "${SCREENRECORD_ANALYZE_US}" \
   -thread_queue_size 1024 \
   -fflags +genpts+discardcorrupt+igndts \
@@ -99,3 +104,8 @@ set -o pipefail
   -payload_type "${PT}" -ssrc "${SSRC}" \
   -f rtp -pkt_size 1200 \
   "${RTP_URL}"
+adb_rc=${PIPESTATUS[0]}
+ff_rc=${PIPESTATUS[1]}
+set -e
+echo "$(date -Is) ingest 管道结束: adb_exit=${adb_rc} ffmpeg_exit=${ff_rc}（adb 先结束→FFmpeg 常因 stdin EOF 退出；adb 非 0→查设备连接/screenrecord；ffmpeg 非 0→开 FFMPEG_LOGLEVEL=info）" >&2
+exit "${ff_rc}"
