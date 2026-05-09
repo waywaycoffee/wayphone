@@ -2,7 +2,7 @@
   "name": "webrtc-sfu-pilot",
   "private": true,
   "description": "mediasoup SFU pilot: Layer A+B + optional C1 PlainTransport ingest (FFmpeg)",
-  "pilotVersion": "pilot-20260207r",
+  "pilotVersion": "pilot-20260207s",
   "license": "UNLICENSED",
   "engines": {
     "node": ">=20"

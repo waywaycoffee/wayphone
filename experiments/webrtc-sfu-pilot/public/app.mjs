@@ -1,7 +1,7 @@
 import { Device } from './mediasoup-client.esm.js';
 
 /** 与 index.html 中 app.mjs 查询参数同步 bump，便于确认已加载新前端 */
-const FRONTEND_BUILD = 'pilot-20260207r';
+const FRONTEND_BUILD = 'pilot-20260207s';
 
 const logEl = document.getElementById('log');
 const localVideo = document.getElementById('localVideo');
@@ -209,13 +209,17 @@ async function logRecvDiagnostics(
       `${label} transport.getStats: video-bytes≈${videoBytes}` +
       (otherRtpBytes > 0 ? ` 其它inbound-rtp≈${otherRtpBytes}` : '') +
       (decoded != null ? ` framesDecoded=${decoded}` : ' framesDecoded=(无统计)');
-    if (videoBytes > 2000 && (decoded === 0 || decoded === undefined)) {
+    // ~1e4 且 1s/3s 不变：多为 DTLS/握手，不是「已有视频流」；勿与解码问题混淆
+    if (videoBytes < 80000 && (decoded === 0 || decoded === undefined)) {
+      line +=
+        ' → 字节偏少：更像未收到持续视频 RTP。查 ① 宿主机是否在跑 c1:ingest / c1:ingest:adb（容器重启后须重跑）② MEDIASOUP_ANNOUNCED_IP=公网EIP ③ 安全组入站 UDP 40000–49999 ④ docker logs「PlainTransport|FFmpeg→SFU」是否在涨。';
+    } else if (videoBytes >= 80000 && (decoded === 0 || decoded === undefined)) {
       if (String(negotiatedMime).includes('VP8')) {
         line +=
-          ' → VP8 仍无帧：① run-c1 + vp8 ② 服务端日志 grep「PlainTransport stats|FFmpeg→SFU」— rtpBytesReceived 须涨 ③ bytes 卡~10k：多为 ingest 未进 SFU 或 UDP 40000–49999/安全组。';
+          ' → VP8 已较多字节仍无帧：run-c1+vp8、核对服务端 ingest 与 PT；仍异常再查网络。';
       } else {
         line +=
-          ' → 有视频流量但无解码帧：可试服务端 MEDIASOUP_INGEST_CODEC=vp8 + 宿主机 vp8 FFmpeg，见 README。';
+          ' → 已收到较多字节仍无解码帧：可试 MEDIASOUP_INGEST_CODEC=vp8 + 宿主机 vp8 彩条，见 README。';
       }
     } else if (videoBytes < 500 && otherRtpBytes > 2000) {
       line +=
