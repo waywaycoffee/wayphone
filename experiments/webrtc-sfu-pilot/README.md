@@ -126,6 +126,11 @@ docker compose logs --tail=30
 
 **黑屏但日志里 `transport.getStats` 有 bytes、`framesDecoded=0`**：多为 FFmpeg→H264→Chrome 解码不兼容；可设 **`MEDIASOUP_INGEST_CODEC=vp8`** 并 **`run-c1-ffmpeg-ingest.sh`**。**同 ECS 宿主机**上 FFmpeg 请打 **`127.0.0.1:端口`**（脚本默认如此），勿长期用「本机 EIP」——云上 **UDP hairpin** 常导致 SFU 收不到 RTP。ECS 的 **`ffmpeg` 需带 libvpx**（一般 `apt install ffmpeg` 即可）。
 
+**`video-bytes` 只有约 1 万且 1s/3s 几乎不涨**：多表示 **SFU 侧 ingest 没在持续收 RTP**（或端口/进程不是当前这次启动的），不是单纯「解码慢」。请 **先** 在 ECS 上看容器日志（仅观看后约 2s 会打两行）：  
+`docker compose logs --tail=80 webrtc-sfu-pilot | grep -E 'PlainTransport stats|FFmpeg→SFU|rtpBytesReceived'`  
+- 若 **`rtpBytesReceived` 几乎为 0**：宿主机 **`npm run c1:ingest:adb` / `c1:ingest` 是否仍在跑**、**端口是否与本次 `docker compose` 日志里的 `mediasoup RTP tuple` 一致**（容器重启后端口会变，须重跑 `run-c1`）。  
+- 若 **`rtpBytesReceived` 在涨** 但浏览器仍 `framesDecoded=0`：再试 **`MEDIASOUP_INGEST_CODEC=vp8`** + 彩条 **`npm run c1:ingest`** 验证链路；ADB  ingest 目前仅 H264。
+
 #### C1 实践经验（排障与部署习惯）
 
 曾出现：**FFmpeg 在推、PlainTransport `bytesReceived` 很大，但 `rtpBytesReceived=0`、浏览器黑屏**。常见组合原因包括：**镜像内仍是旧 `server.cjs`（只 `git pull` 未 `build`）**、**ingest 建议 `MEDIASOUP_INGEST_RTCP_MUX=0` 与 FFmpeg 三端口对齐**、**`run-c1` 脚本版本过旧（`pipefail` + grep）**。
