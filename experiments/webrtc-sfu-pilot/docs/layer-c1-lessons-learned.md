@@ -117,3 +117,41 @@ docker exec <容器id> grep -n 'ingest_rtcp_port' /app/server.cjs
 - 路线图：**`docs/layer-c-roadmap.md`**（仓库根目录）§C1  
 - 试点总说明：**`docs/webrtc-sfu-pilot.md`**（仓库根目录）  
 - 本目录 README：**`../README.md`** §Layer C1  
+
+---
+
+## 10. 复发时复位顺序（彩条曾通、现在又黑 / `rtpBytesReceived` 不涨）
+
+**不要**用「几小时前的」`41595` 等端口手抄跑 FFmpeg；**容器每重建一次端口就变**，必须用当次日志或 **`run-c1`**。
+
+在 **`experiments/webrtc-sfu-pilot`** 目录依次执行：
+
+```bash
+git pull origin main
+
+# 核对 .env（无则 export）：INGEST_TEST=1、ANNOUNCED_IP=EIP、RTCP 分流、codec 一致
+grep -E '^MEDIASOUP_INGEST_TEST|^MEDIASOUP_ANNOUNCED_IP|^MEDIASOUP_INGEST_RTCP_MUX|^MEDIASOUP_INGEST_CODEC' .env 2>/dev/null || true
+
+docker compose build --no-cache
+docker compose up -d --force-recreate
+
+docker compose logs --tail=120 webrtc-sfu-pilot | grep -E 'rtcpMux=false|ingest_rtcp_port|mediasoup RTP tuple'
+```
+
+确认日志里 **有** `rtcpMux=false` 与 **`ingest_rtcp_port=…`**（与 **`.env` 里 `MEDIASOUP_INGEST_RTCP_MUX=0`** 一致）。若没有，回到 **§3**（镜像仍是旧 `server.cjs`）。
+
+**停掉**宿主机上所有旧 `ffmpeg` / 旧 ingest 终端后：
+
+```bash
+export MEDIASOUP_INGEST_CODEC=h264
+npm run c1:ingest -- --local
+```
+
+另开 SSH：**仅观看** 后看 **`rtpBytesReceived` 是否持续上涨**：
+
+```bash
+docker compose logs --tail=80 webrtc-sfu-pilot | grep -E 'PlainTransport stats|FFmpeg→SFU|rtpBytesReceived'
+```
+
+- **仍不涨**：对照 **§4 RTCP mux**、**§5 run-c1 脚本**；宿主机 **`tcpdump -ni lo udp port <RTP端口>`** 是否在 ingest 运行时有包。  
+- **在涨仍黑屏**：再试 **`MEDIASOUP_INGEST_CODEC=vp8`** + **`npm run c1:ingest`**（§6）；并查云安全组 **UDP 40000–49999** 与 **`MEDIASOUP_ANNOUNCED_IP=EIP`**。
