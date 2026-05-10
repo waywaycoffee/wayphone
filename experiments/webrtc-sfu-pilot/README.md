@@ -130,6 +130,8 @@ docker compose logs --tail=30
 
 **查「为什么退出」**（`git pull` 后）：ADB ingest 脚本在管道结束时会向 stderr 打一行 **`ingest 管道结束: adb_exit=… ffmpeg_exit=…`**。再配合：**`ADB_SCREENRECORD_STDERR=/dev/stderr`**（看 screenrecord 报错）、**`FFMPEG_LOGLEVEL=info`**（看 FFmpeg 细节）、宿主机 **`dmesg | tail`**（是否 OOM killer）、**`adb devices`**（是否仍 `device`）。常见：**screenrecord 自行结束**（部分 ROM 时长/策略）→ adb 侧先关 → FFmpeg stdin EOF → 进程退出。
 
+**RTCP 有包、RTP 口 tcpdump 无包**：多为 **screenrecord→FFmpeg stdin 断流**（非 SFU/NVENC/SELinux）。一键采样：**`export ANDROID_SERIAL=127.0.0.1:5555`** 后 **`npm run c1:diagnose:adb`**（`scripts/diagnose-adb-screenrecord.sh`，默认录约 12s 到 `/tmp/diag-screenrecord-*.h264` 并扫 stderr 关键字）。
+
 **黑屏但日志里 `transport.getStats` 有 bytes、`framesDecoded=0`**：多为 FFmpeg→H264→Chrome 解码不兼容；可设 **`MEDIASOUP_INGEST_CODEC=vp8`** 并 **`run-c1-ffmpeg-ingest.sh`**。**同 ECS 宿主机**上 FFmpeg 请打 **`127.0.0.1:端口`**（脚本默认如此），勿长期用「本机 EIP」——云上 **UDP hairpin** 常导致 SFU 收不到 RTP。ECS 的 **`ffmpeg` 需带 libvpx**（一般 `apt install ffmpeg` 即可）。
 
 **`video-bytes` 只有约 1 万且 1s/3s 几乎不涨**：多表示 **SFU 侧 ingest 没在持续收 RTP**（或端口/进程不是当前这次启动的），不是单纯「解码慢」。请 **先** 在 ECS 上看容器日志（仅观看后约 2s 会打两行）：  

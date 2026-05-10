@@ -15,6 +15,7 @@
     "c1:ingest:adb": "env C1_INGEST_SOURCE=adb bash scripts/run-c1-ffmpeg-ingest.sh",
     "c1:ingest:adb:loop": "bash scripts/run-c1-ingest-adb-loop.sh",
     "c1:check:adb": "bash scripts/check-c1-adb-prereqs.sh",
+    "c1:diagnose:adb": "bash scripts/diagnose-adb-screenrecord.sh",
     "pilot:ingest-debug": "bash scripts/pilot-ingest-debug.sh"
   },
   "dependencies": {
