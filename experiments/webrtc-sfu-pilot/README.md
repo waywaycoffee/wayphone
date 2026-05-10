@@ -124,6 +124,8 @@ docker compose logs --tail=30
 - 在 **仓库根目录** 安装：`adb -s 127.0.0.1:5555 install -r -g "experiments/webrtc-sfu-pilot/source app/ChinaMobile10086.apk"`  
 （`*.apk` 已写入仓库根 `.gitignore`，勿 `git add` APK。）  
 
+**掌厅启动后系统弹窗「Allow … access all device logs?」**：多设备时先 **`export ANDROID_SERIAL=127.0.0.1:5555`**。仅等待并自动点 **「Allow one-time access」**：**`npm run adb:dismiss-log-dialog`**（你已自行 `am start` 后执行）；一键 **启动掌厅再点允许**：**`npm run adb:start-zhangting-dismiss-log-dialog`**。实现见 **`scripts/adb-dismiss-log-access-dialog.sh`**（解析 `android:id/log_access_dialog_allow_button` 的 `bounds`；解析失败时用 **`LOG_DIALOG_FALLBACK_X` / `LOG_DIALOG_FALLBACK_Y`**，默认 `360`/`1042` 对应 720×1280 实测）。若应用仍 **SIGSEGV** 秒退，属 APK/Redroid native 问题，授权脚本无法修复。
+
 **彩条 → Redroid/真机画面（掌厅等）**：宿主机需 **`adb devices` 为 `device`**（与 Redroid 同机时常为 `127.0.0.1:5555`）。可先 **`npm run c1:check:adb`** 自检。在同一目录执行 **`npm run c1:ingest:adb -- --local`**（等价于 `C1_INGEST_SOURCE=adb` + `run-c1`），将用 **`scripts/ffmpeg-ingest-h264-adb-screenrecord.sh`**：`adb exec-out screenrecord --output-format=h264` 管道进 FFmpeg，**libx264 baseline** 重编码后仍发往 **同一 PlainTransport RTP 端口**（ingest 仅 H264；若 `.env` 为 VP8 请改 **h264** 与 Router 一致）。多设备时 **`export ANDROID_SERIAL=序列号`**；分辨率/码率见脚本内 **`SCREENRECORD_*`** 环境变量。`screenrecord` 行为随 ROM 变化，若黑屏先看 **`adb exec-out screenrecord --output-format=h264 -`** 是否在本机可持续出字节。
 
 **ingest 自行断开**（`pgrep ffmpeg` 突然无输出）：多为 **adb 管道 EOF**（`screenrecord` 结束、设备断连、Redroid 限制）。可改用 **`npm run c1:ingest:adb:loop`**（`scripts/run-c1-ingest-adb-loop.sh`）：退出后 **`C1_INGEST_LOOP_SLEEP` 秒（默认 2）** 自动重拉 `run-c1` 并再起 FFmpeg。**注意**：若 **SFU 容器重启、RTP 端口变了**，循环只会重启 FFmpeg，仍可能打到旧端口；此时应 **停掉 loop → 再起 pilot → 再起 loop**。排错时用 **`ADB_SCREENRECORD_STDERR=/dev/stderr`**。

@@ -16,6 +16,8 @@
     "c1:ingest:adb:loop": "bash scripts/run-c1-ingest-adb-loop.sh",
     "c1:check:adb": "bash scripts/check-c1-adb-prereqs.sh",
     "c1:diagnose:adb": "bash scripts/diagnose-adb-screenrecord.sh",
+    "adb:dismiss-log-dialog": "bash scripts/adb-dismiss-log-access-dialog.sh",
+    "adb:start-zhangting-dismiss-log-dialog": "bash scripts/adb-dismiss-log-access-dialog.sh --start-zhangting",
     "pilot:ingest-debug": "bash scripts/pilot-ingest-debug.sh"
   },
   "dependencies": {
