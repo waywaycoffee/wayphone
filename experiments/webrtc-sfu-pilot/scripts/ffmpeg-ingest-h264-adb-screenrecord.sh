@@ -104,8 +104,14 @@ set +e
   -payload_type "${PT}" -ssrc "${SSRC}" \
   -f rtp -pkt_size 1200 \
   "${RTP_URL}"
-adb_rc=${PIPESTATUS[0]}
-ff_rc=${PIPESTATUS[1]}
+# Ctrl+C / 信号打断时 PIPESTATUS 可能只有一项；set -u 下勿直接读 PIPESTATUS[1]
+_ps=("${PIPESTATUS[@]}")
+adb_rc=-1
+ff_rc=-1
+if [[ "${#_ps[@]}" -ge 1 ]]; then adb_rc="${_ps[0]}"; fi
+if [[ "${#_ps[@]}" -ge 2 ]]; then ff_rc="${_ps[1]}"; fi
+if [[ "${ff_rc}" == "-1" ]]; then ff_rc="${adb_rc}"; fi
+if [[ "${ff_rc}" == "-1" ]]; then ff_rc=255; fi
 set -e
 echo "$(date -Is) ingest 管道结束: adb_exit=${adb_rc} ffmpeg_exit=${ff_rc}（adb 先结束→FFmpeg 常因 stdin EOF 退出；adb 非 0→查设备连接/screenrecord；ffmpeg 非 0→开 FFMPEG_LOGLEVEL=info）" >&2
 exit "${ff_rc}"
