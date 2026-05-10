@@ -104,7 +104,7 @@ set +e
   -payload_type "${PT}" -ssrc "${SSRC}" \
   -f rtp -pkt_size 1200 \
   "${RTP_URL}"
-# Ctrl+C / 信号打断时 PIPESTATUS 可能只有一项；set -u 下勿直接读 PIPESTATUS[1]
+# Ctrl+C / 信号打断时 PIPESTATUS 元素可能少于 2；set -u 下须先复制到数组再取下标，勿直接写 ff_rc=${PIPESTATUS 的第二项}
 _ps=("${PIPESTATUS[@]}")
 adb_rc=-1
 ff_rc=-1
