@@ -58,8 +58,8 @@ fi
 
 echo ""
 echo "=== 4) 建议 ==="
-# 约 ≥40KB/s 才像「有在录屏」的粗门槛（可调）
-min_ok=$((SEC * 40000))
+# 粗门槛：静止/简单 UI 时 H264 可能只有几 KB/s；有动画或滑动后常明显上升（可调 DIAG 阈值）
+min_ok=$((SEC * 3300))
 if [[ "${bytes}" -lt 10000 ]]; then
   echo "    · 几乎无数据：检查 Redroid/adb connect、冻屏、或提高 DIAGNOSE_SCREENRECORD_SEC"
 elif [[ "${bytes}" -lt "${min_ok}" ]]; then
