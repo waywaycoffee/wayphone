@@ -20,16 +20,122 @@
 # 退出时：脚本会向 stderr 打印 adb / ffmpeg 的退出码（常见：adb=0 ffmpeg=0 为 stdin 正常 EOF；ffmpeg 非 0 多为编码/RTP；adb 非 0 多为设备断连）。
 set -euo pipefail
 
-HOST=${1:-127.0.0.1}
-PORT=${2:?usage: "$0 <host> <rtp_port> [rtcp_port] — 与 ffmpeg-ingest-h264.sh 一致"}
-RTCP_PORT=${3:-${INGEST_RTCP_PORT:-$PORT}}
-PT=${INGEST_PT:-96}
-SSRC=${INGEST_SSRC:-111222333}
+usage() {
+  cat <<'EOF' >&2
+ffmpeg-ingest-h264-adb-screenrecord.sh — ADB screenrecord → FFmpeg → RTP（C1 PlainTransport）
+
+位置参数（推荐，与 ffmpeg-ingest-h264.sh 一致）:
+  <host> <rtp_port> [rtcp_port]
+
+可选长选项（须写在位置参数之前；与 run-c1 自动传参二选一）:
+  --url rtp://HOST:PORT[?...&rtcpport=N...]   解析 HOST / RTP 口 / RTCP 口（无 rtcpport 时与第三参或 INGEST_RTCP_PORT 或 RTP 口相同）
+  --width W --height H                       设置录屏分辨率 WxH（须同时给）
+  --bitrate 3000000 | 3M | 6m              screenrecord --bit-rate，单位 bit/s；后缀 M/m 表示兆 bit/s
+  --adb                                      无操作（本脚本始终走 ADB）
+
+示例:
+  bash scripts/ffmpeg-ingest-h264-adb-screenrecord.sh 127.0.0.1 45078 42835
+  bash scripts/ffmpeg-ingest-h264-adb-screenrecord.sh --width 540 --height 960 --bitrate 3M -- 127.0.0.1 45078 42835
+EOF
+}
+
+# 从 rtp://host:port?...&rtcpport= 解析（host 可为 IPv4）
+_parse_rtp_url() {
+  local _u="$1"
+  [[ "${_u}" == rtp://* ]] || return 1
+  local _r="${_u#rtp://}"
+  _url_host="${_r%%:*}"
+  local _rest="${_r#*:}"
+  _url_port="${_rest%%\?*}"
+  _url_port="${_url_port%%/*}"
+  _url_rtcp=""
+  case "${_u}" in
+    *rtcpport=*) _url_rtcp="${_u#*rtcpport=}"; _url_rtcp="${_url_rtcp%%&*}" ;;
+  esac
+  [[ "${_url_port}" =~ ^[0-9]+$ ]] || return 1
+  if [[ -n "${_url_rtcp}" && ! "${_url_rtcp}" =~ ^[0-9]+$ ]]; then
+    return 1
+  fi
+  return 0
+}
+
+_parse_bitrate_arg() {
+  local b="$1"
+  if [[ "${b}" =~ ^[0-9]+[Mm]$ ]]; then
+    local n="${b%[Mm]}"
+    echo $((n * 1000000))
+  elif [[ "${b}" =~ ^[0-9]+$ ]]; then
+    echo "${b}"
+  else
+    return 1
+  fi
+}
+
+_url_host=""
+_url_port=""
+_url_rtcp=""
+flag_w=""
+flag_h=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -h|--help) usage; exit 0 ;;
+    --url)
+      [[ $# -ge 2 ]] || { echo "error: --url 需要参数" >&2; exit 1; }
+      _parse_rtp_url "$2" || { echo "error: 无法解析 --url（需要 rtp://HOST:PORT[&rtcpport=…]）: $2" >&2; exit 1; }
+      shift 2
+      ;;
+    --width)
+      [[ $# -ge 2 ]] || { echo "error: --width 需要参数" >&2; exit 1; }
+      flag_w="$2"
+      shift 2
+      ;;
+    --height)
+      [[ $# -ge 2 ]] || { echo "error: --height 需要参数" >&2; exit 1; }
+      flag_h="$2"
+      shift 2
+      ;;
+    --bitrate)
+      [[ $# -ge 2 ]] || { echo "error: --bitrate 需要参数" >&2; exit 1; }
+      SCREENRECORD_BITRATE="$(_parse_bitrate_arg "$2")" || { echo "error: 无法解析 --bitrate: $2（用 3000000 或 3M）" >&2; exit 1; }
+      shift 2
+      ;;
+    --adb) shift ;;
+    --) shift; break ;;
+    -*)
+      echo "error: 未知选项: $1（本脚本为 host rtp_port [rtcp]；误把 --url 当第一个位置参数会导致 RTP 目标错乱）" >&2
+      usage
+      exit 1
+      ;;
+    *) break ;;
+  esac
+done
 
 ADB_BIN=${ADB_BIN:-adb}
 ANDROID_SERIAL=${ANDROID_SERIAL:-}
 SCREENRECORD_SIZE=${SCREENRECORD_SIZE:-720x1280}
 SCREENRECORD_BITRATE=${SCREENRECORD_BITRATE:-6000000}
+if [[ -n "${flag_w:-}" && -n "${flag_h:-}" ]]; then
+  SCREENRECORD_SIZE="${flag_w}x${flag_h}"
+elif [[ -n "${flag_w:-}" || -n "${flag_h:-}" ]]; then
+  echo "error: --width 与 --height 须同时指定" >&2
+  exit 1
+fi
+
+if [[ $# -ge 2 ]]; then
+  HOST=$1
+  PORT=$2
+  RTCP_PORT=${3:-${INGEST_RTCP_PORT:-$PORT}}
+elif [[ -n "${_url_port}" ]]; then
+  HOST="${_url_host:-127.0.0.1}"
+  PORT="${_url_port}"
+  RTCP_PORT="${_url_rtcp:-${INGEST_RTCP_PORT:-$PORT}}"
+else
+  echo "error: 缺少位置参数 <host> <rtp_port> [rtcp_port]，且未提供 --url。见: $0 --help" >&2
+  exit 1
+fi
+
+PT=${INGEST_PT:-96}
+SSRC=${INGEST_SSRC:-111222333}
 SCREENRECORD_TIME_LIMIT=${SCREENRECORD_TIME_LIMIT:-0}
 SCREENRECORD_PROBE_SIZE=${SCREENRECORD_PROBE_SIZE:-33554432}
 SCREENRECORD_ANALYZE_US=${SCREENRECORD_ANALYZE_US:-20000000}
