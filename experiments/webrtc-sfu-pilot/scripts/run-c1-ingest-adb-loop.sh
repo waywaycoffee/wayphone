@@ -11,6 +11,15 @@ export C1_INGEST_SOURCE=adb
 export MEDIASOUP_INGEST_CODEC="${MEDIASOUP_INGEST_CODEC:-h264}"
 SLEEP_SEC="${C1_INGEST_LOOP_SLEEP:-2}"
 
+# 多台 device 时子脚本会立刻 exit 1；未 export ANDROID_SERIAL 会导致本 loop 每 2s 空转刷屏。
+_dc=$(adb devices 2>/dev/null | awk 'NR>1 && $2=="device"{c++} END{print c+0}')
+if [[ "${_dc}" -gt 1 && -z "${ANDROID_SERIAL:-}" ]]; then
+  echo "error: 当前有 ${_dc} 台 adb device，但未设置 ANDROID_SERIAL。" >&2
+  echo "请先执行（再重跑本脚本）: export ANDROID_SERIAL=127.0.0.1:5555" >&2
+  adb devices >&2
+  exit 1
+fi
+
 while true; do
   echo "$(date -Is) c1:ingest:adb 启动…" >&2
   if bash scripts/run-c1-ffmpeg-ingest.sh --local; then

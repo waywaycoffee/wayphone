@@ -128,6 +128,8 @@ docker compose logs --tail=30
 
 **ingest 自行断开**（`pgrep ffmpeg` 突然无输出）：多为 **adb 管道 EOF**（`screenrecord` 结束、设备断连、Redroid 限制）。可改用 **`npm run c1:ingest:adb:loop`**（`scripts/run-c1-ingest-adb-loop.sh`）：退出后 **`C1_INGEST_LOOP_SLEEP` 秒（默认 2）** 自动重拉 `run-c1` 并再起 FFmpeg。**注意**：若 **SFU 容器重启、RTP 端口变了**，循环只会重启 FFmpeg，仍可能打到旧端口；此时应 **停掉 loop → 再起 pilot → 再起 loop**。排错时用 **`ADB_SCREENRECORD_STDERR=/dev/stderr`**。
 
+**多台 `adb devices` 时**：**必须先 `export ANDROID_SERIAL=127.0.0.1:5555`** 再跑 **`c1:ingest:adb` / `c1:ingest:adb:loop`**。勿写成 **`pidof … && npm run …`** 且未在同一 shell 里 export——子进程 **继承不到** 你以为设过的变量（若 export 写在上一行但未执行/在别的终端则仍为空）。loop 脚本在 **>1 台 device 且未设 ANDROID_SERIAL** 时会 **直接退出** 并提示，避免每 2 秒刷屏。
+
 **查「为什么退出」**（`git pull` 后）：ADB ingest 脚本在管道结束时会向 stderr 打一行 **`ingest 管道结束: adb_exit=… ffmpeg_exit=…`**。再配合：**`ADB_SCREENRECORD_STDERR=/dev/stderr`**（看 screenrecord 报错）、**`FFMPEG_LOGLEVEL=info`**（看 FFmpeg 细节）、宿主机 **`dmesg | tail`**（是否 OOM killer）、**`adb devices`**（是否仍 `device`）。常见：**screenrecord 自行结束**（部分 ROM 时长/策略）→ adb 侧先关 → FFmpeg stdin EOF → 进程退出。
 
 **RTCP 有包、RTP 口 tcpdump 无包**：多为 **screenrecord→FFmpeg stdin 断流**（非 SFU/NVENC/SELinux）。一键采样：**`export ANDROID_SERIAL=127.0.0.1:5555`** 后 **`npm run c1:diagnose:adb`**（`scripts/diagnose-adb-screenrecord.sh`，默认录约 12s 到 `/tmp/diag-screenrecord-*.h264` 并扫 stderr 关键字）。
