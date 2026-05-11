@@ -177,3 +177,38 @@ npm run c1:streaming:check
 ```
 
 再按上表从 **B → 彩条 → adb** 做人工步骤；**彩条通、adb 不通** → 问题在 **采集/Redroid**；**彩条也不通** → 先修 **SFU / ingest / 网络**，不要先怪 Android 版本。
+
+---
+
+## 12. 黑屏 / 仅闪一帧：分层自检 A → B → C（与「pgrep ffmpeg」脱钩）
+
+**ECS / 无 nvm、无 npm**：**不要**强依赖 **`source …/nvm.sh`**（文件可能不存在）。C1 自检直接用 **`bash scripts/run-c1-ffmpeg-ingest.sh --local`** 与 **`bash scripts/c1-sfu-stats-after-viewer.sh`**，无需在宿主机安装 **`apt install npm`**。若 **`git pull` 已最新仍缺脚本**，本机需 **`git push`** 后再拉；临时用 **`docker compose logs … | grep`** 见下文 A 步或 **`docs/aliyun-ecs-pilot.md` §4.1** 表。
+
+目标：**先证明浏览器这条 WebRTC 腿能持续收 SFU 下发的视频 RTP**，再证明 **ADB→FFmpeg 能持续把 RTP 打进 PlainTransport**。二者分开验证，避免把「进程在跑」当成「码流在涨」。
+
+### A. 彩条（无 ADB）：确认 SFU → 浏览器
+
+1. **停掉**宿主机上所有往 ingest 端口打的旧 `ffmpeg`（避免打到过期端口）。
+2. 容器已 **`MEDIASOUP_INGEST_TEST=1`**，`.env` 与 **`export MEDIASOUP_INGEST_CODEC=h264`**（或容器一致）对齐。
+3. 在 **`experiments/webrtc-sfu-pilot`**：`npm run c1:ingest -- --local`（走 **`ffmpeg-ingest-h264.sh` 彩条**）。
+4. 浏览器打开 **`http://<EIP>:3000/`**，**只点「仅观看」**，等约 8 秒。
+5. **SSH**：`npm run c1:diag:sfu`（或 `bash scripts/c1-sfu-stats-after-viewer.sh`）。关注：
+   - **`FFmpeg→SFU`**：`packetCount` / `byteCount` 在 **1.5s 与 5s** 两行里是否**明显变大**（持续 ingest 时应持续上涨；若长期卡在几十，见下文 B）。
+   - **`SFU-to-browser`**：`consumer outbound-rtp packetCount` 是否 **> 0**。
+6. **浏览器**：打开 **`chrome://webrtc-internals`**，选中当前连接，看 **ICE / selected candidate pair** 是否为 **succeeded**，**inbound-rtp**（video）**bytesReceived** 是否随时间上涨。
+
+**结论**：彩条下 **A 全过** → 浏览器腿与 ingest 端口/RTCP/codec 基本可信。**彩条过、ADB 不过** → 优先 **ADB `exec-out`、screenrecord、FFmpeg stdin/x264 节奏**，而不是再调 `MEDIASOUP_ANNOUNCED_IP`。
+
+### B. 「只有几十包」：ADB 段长与日志
+
+- **短段 + 易对比**：`npm run c1:ingest:adb:short`（等价 **`SCREENRECORD_TIME_LIMIT=20`** + **`run-c1 … --local`**）。配合 **`npm run c1:ingest:adb:loop`** 时可在 `.env` 或 shell 里 **`export SCREENRECORD_TIME_LIMIT=20`** 再跑 loop，缩短段间空窗。
+- **看管道是否在动**：`npm run c1:ingest:adb:short:v`（**`ADB_SCREENRECORD_STDERR=/dev/stderr`** + **`FFMPEG_LOGLEVEL=info`**），看终端里 **`frame=` / `fps=`** 是否持续增长；若卡住，重点查 **screenrecord 是否只吐一小块 H264**、**FFmpeg 是否在等 stdin**。
+- **SFU 侧**：再次 **`npm run c1:diag:sfu`**，看 **`FFmpeg→SFU` 的 `packetCount` 在数秒～数十秒内是否持续增长**；若一直卡在几十，与 **§2「bytesReceived 大、rtpBytesReceived 不涨」** 对照（RTCP mux / PT / 旧镜像）。
+
+### C. Producer 有 RTP 但 consumer 仍为 0
+
+- **webrtc-internals**：ICE、DTLS、**inbound-rtp video**。
+- **云安全组**：入站 **UDP 40000–49999**；**`MEDIASOUP_ANNOUNCED_IP`** 为浏览器可达的 **公网 EIP**。
+- **容器重启**：ingest **RTP 端口会变**，必须 **kill 旧 ffmpeg** 后按**当次** `docker compose logs` 里的 **`mediasoup RTP tuple` / `ingest_rtcp_port`** 再 **`npm run c1:ingest`** / **`c1:ingest:adb`**。
+
+**一键命令索引**（均在试点目录）：`npm run c1:diag:sfu`、`npm run c1:ingest:adb:short`、`npm run c1:ingest:adb:short:v`、`npm run pilot:ingest-debug`、`npm run c1:streaming:check`。

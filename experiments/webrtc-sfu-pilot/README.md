@@ -51,6 +51,10 @@ docker compose config | grep -E 'MEDIASOUP_|PILOT_VERSION'
 docker compose build --no-cache && docker compose up -d --force-recreate
 ```
 
+**SSH / 自动化里 `npm: command not found`**：PoC 上 **SFU 在 Docker 里编好了**，宿主机 **不必**装 Node/npm 也能跑 **C1 ingest**。在 `experiments/webrtc-sfu-pilot` 下直接用：**`bash scripts/run-c1-ffmpeg-ingest.sh --local`**（彩条）、**`bash scripts/c1-sfu-stats-after-viewer.sh`**（等价 `npm run c1:diag:sfu`）。若你本机另有 nvm，路径可能是 **`$HOME/.nvm/nvm.sh`**（没有该文件就说明 **未装 nvm**，不要照抄 `/root/.nvm/…`）。**不建议**为跑试点在 ECS 上 **`apt install npm`**（版本易与项目要求不一致）；需要宿主机 `npm` 时再单独装官方 Node 20+。详见 **`docs/aliyun-ecs-pilot.md` §4.1**。
+
+**`git pull` 已 up to date 却没有新脚本**（如 `scripts/c1-sfu-stats-after-viewer.sh`）：说明 **远端尚未包含对应提交**，需在本机仓库 **`git push`** 后再 ECS `git pull`；脚本未到位前可用 **`docker compose logs … | grep -E 'PlainTransport stats|FFmpeg→SFU|SFU-to-browser|ingest producer getStats|consume:'`**（见 **`docs/layer-c1-lessons-learned.md` §12**）。
+
 **部署指纹（前后端一致）**：只在 **`package.json` 的 `pilotVersion`** 改一处；**`npm run build:client`** 会先跑 **`scripts/sync-pilot-version.cjs`**，把 **`public/index.html`** 里占位 **`pilot-00000000sync`** 全部替换为该值（含 `<meta name="pilot-frontend-version">` 与 `app.mjs` 的 `?v=`）。**`public/app.mjs`** 运行时读 meta，仓库内不写死版本串。**`server.cjs`** 的 **`__pilot_version`** 也读 `package.json`。**Dockerfile** 在 `COPY public` 后执行 **`npm run build:client`**，镜像内会自动对齐。`.env` 里**不要**写 **`PILOT_VERSION`**，除非要临时覆盖。
 
 **本地跑 SFU**：请用 **`npm start`**（会先执行 **`prestart` → `build:client`**，同步版本并打包 `mediasoup-client.esm.js`）。不要直接 **`node server.cjs`**，否则 `index.html` 可能仍是占位 **`pilot-00000000sync`** 且缺少 bundle。
@@ -142,9 +146,11 @@ docker compose logs --tail=30
 **黑屏但日志里 `transport.getStats` 有 bytes、`framesDecoded=0`**：多为 FFmpeg→H264→Chrome 解码不兼容；可设 **`MEDIASOUP_INGEST_CODEC=vp8`** 并 **`run-c1-ffmpeg-ingest.sh`**。**同 ECS 宿主机**上 FFmpeg 请打 **`127.0.0.1:端口`**（脚本默认如此），勿长期用「本机 EIP」——云上 **UDP hairpin** 常导致 SFU 收不到 RTP。ECS 的 **`ffmpeg` 需带 libvpx**（一般 `apt install ffmpeg` 即可）。
 
 **`video-bytes` 只有约 1 万且 1s/3s 几乎不涨**：多表示 **SFU 侧 ingest 没在持续收 RTP**（或端口/进程不是当前这次启动的），不是单纯「解码慢」。请 **先** 在 ECS 上看容器日志（仅观看后约 2s 会打两行）：  
-`docker compose logs --tail=80 webrtc-sfu-pilot | grep -E 'PlainTransport stats|FFmpeg→SFU|rtpBytesReceived'`  
-- 若 **`rtpBytesReceived` 几乎为 0**：宿主机 **`npm run c1:ingest:adb` / `c1:ingest` 是否仍在跑**、**端口是否与本次 `docker compose` 日志里的 `mediasoup RTP tuple` 一致**（容器重启后端口会变，须重跑 `run-c1`）。  
-- 若 **`rtpBytesReceived` 在涨** 但浏览器仍 `framesDecoded=0`：再试 **`MEDIASOUP_INGEST_CODEC=vp8`** + 彩条 **`npm run c1:ingest`** 验证链路；ADB  ingest 目前仅 H264。
+`npm run c1:diag:sfu`（等价：`bash scripts/c1-sfu-stats-after-viewer.sh`；或手写 `docker compose logs … | grep -E 'PlainTransport stats|FFmpeg→SFU|SFU-to-browser|rtpBytesReceived'`）  
+- 若 **`rtpBytesReceived` / `FFmpeg→SFU` 的 packetCount 几乎不涨**：宿主机 **`npm run c1:ingest:adb` / `c1:ingest` 是否仍在跑**、**端口是否与本次 `docker compose` 日志里的 `mediasoup RTP tuple` 一致**（容器重启后端口会变，须重跑 `run-c1`）。  
+- 若 **ingest 在涨** 但浏览器仍 `framesDecoded=0`：再试 **`MEDIASOUP_INGEST_CODEC=vp8`** + 彩条 **`npm run c1:ingest`** 验证链路；ADB ingest 目前仅 H264。
+
+**分层自检 A→B→C**（先彩条再 ADB、再 webrtc-internals）：**[`docs/layer-c1-lessons-learned.md`](docs/layer-c1-lessons-learned.md) §12**。常用命令：**`npm run c1:ingest:adb:short`**（`SCREENRECORD_TIME_LIMIT=20`）、**`npm run c1:ingest:adb:short:v`**（带 screenrecord/ffmpeg 详细日志）。
 
 #### C1 实践经验（排障与部署习惯）
 

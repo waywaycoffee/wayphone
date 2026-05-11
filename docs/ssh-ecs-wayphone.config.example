@@ -12,6 +12,11 @@
 #   或不用通配：先 ssh 上去 ls，再 scp 单个文件名。
 #
 # 4）注释行不要整行粘贴进终端执行；以 # 开头的行是说明，不是命令。
+#
+# 5）排错（对照你本机 ssh -v 现象）：
+#    • `connect to host … port 22: Operation timed out`：多半是 **HostName 写错 / EIP 已变**（例如仍指向旧 IP），或该 IP 的安全组未对你当前出口放行。应用 **控制台里这台实例当期的公网 EIP** 更新 HostName。
+#    • `Permission denied (publickey)` 但 TCP 已通：说明 **没用对私钥**。ECS 上 root 的 `authorized_keys` 对应的是 **创建实例时绑定的那把**；请把 IdentityFile 指到 **.pem / 你导入的那把**，不要依赖本机默认 `~/.ssh/id_ed25519`（除非你把它的公钥手动加到了服务器）。
+#    • Host 名须与 `ssh ecs_wayphone` 完全一致：下划线 **`ecs_wayphone`**；若你写的是 **`ecs-wayphone`**，那是 **另一段 Host 配置**，可能仍指向旧 IP。
 
 Host ecs_wayphone
   HostName 8.166.118.148

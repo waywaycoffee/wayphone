@@ -22,4 +22,5 @@ else
   echo "• 若 bytesReceived 大、rtpBytesReceived 始终为 0（尤其 VP8）：在 .env 加 MEDIASOUP_INGEST_RTCP_MUX=0，docker compose up -d --force-recreate，再 bash scripts/run-c1-ffmpeg-ingest.sh --local"
 fi
 echo "• 推流前: export MEDIASOUP_INGEST_CODEC=h264|vp8 与容器一致；INGEST_PT 以日志 ingest PT= 为准。"
+echo "• 浏览器点「仅观看」后筛 C1 统计: npm run c1:diag:sfu（见 docs/layer-c1-lessons-learned.md §12）"
 echo "• 本脚本: npm run pilot:ingest-debug 或 bash scripts/pilot-ingest-debug.sh"

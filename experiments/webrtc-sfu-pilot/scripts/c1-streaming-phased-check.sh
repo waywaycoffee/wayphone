@@ -30,9 +30,13 @@ bash scripts/pilot-ingest-debug.sh || true
 
 echo
 echo "========== 3) 分层串流测试顺序（请人工执行，用于定位断在哪一层）=========="
-echo "  A) Layer B（与 Redroid 无关）：两 Tab — 发布摄像头 / 仅观看。失败 → ICE/安全组/MEDIASOUP_ANNOUNCED_IP，见 docs/webrtc-sfu-pilot.md §3.2"
-echo "  B) Layer C1 彩条：MEDIASOUP_INGEST_TEST=1 起 pilot 后  npm run c1:ingest -- --local ，页里仅观看。失败 → RTP/RTCP/mux/镜像未 build，见 docs/layer-c1-lessons-learned.md"
-echo "  C) Redroid 真屏：掌厅前台 +  export MEDIASOUP_INGEST_CODEC=h264  +  npm run c1:ingest:adb -- --local"
-echo "     黑屏先看：docker compose logs … rtpBytesReceived；为 0 则 adb/screenrecord 或端口未对齐；已涨但 framesDecoded=0 再查 H264 配置"
-echo "  D) screenrecord 单测：  npm run c1:diagnose:adb"
+echo "  A) 浏览器这条腿（与 ADB 无关）：MEDIASOUP_INGEST_TEST=1 起 pilot →  npm run c1:ingest -- --local  （彩条）→ 页里仅观看"
+echo "     另开 SSH:  npm run c1:diag:sfu   看 FFmpeg→SFU packetCount、SFU-to-browser outbound-rtp 是否 >0"
+echo "     浏览器: chrome://webrtc-internals 看 ICE succeeded、inbound-rtp video bytes 是否涨"
+echo "     彩条通、adb 不通 → 问题在 ADB→FFmpeg/screenrecord；彩条也不通 → 先修 SFU/RTCP/端口/ANNOUNCED_IP/安全组 UDP 40000–49999（见 docs/layer-c1-lessons-learned.md §12）"
+echo "  B) ADB 只有几十包不涨： npm run c1:ingest:adb:short  （20s 段）或  npm run c1:ingest:adb:short:v  （带 screenrecord/ffmpeg 详细日志）"
+echo "     持续跑： SCREENRECORD_TIME_LIMIT=20 npm run c1:ingest:adb:loop"
+echo "  C) Producer 有包但 consumer 仍为 0：webrtc-internals + 安全组 + MEDIASOUP_ANNOUNCED_IP=EIP + 容器重启后重跑 run-c1"
+echo "  D) Layer B（两 Tab 摄像头）：与 ingest 无关的 WebRTC 基线，见 docs/webrtc-sfu-pilot.md §3.2"
+echo "  E) screenrecord 单测：  npm run c1:diagnose:adb"
 echo

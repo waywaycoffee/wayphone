@@ -11,6 +11,7 @@
 #   SCREENRECORD_SIZE    默认 720x1280
 #   SCREENRECORD_BITRATE 默认 6000000
 #   SCREENRECORD_TIME_LIMIT  秒；部分 ROM 最长 180。默认 0 表示不传该参数（由系统默认）。
+#   排障时可设 20：npm run c1:ingest:adb:short（与 loop 配合，缩短 EOF 间隔，便于对比 SFU 上 FFmpeg→SFU packetCount）。
 #   SCREENRECORD_PROBE_SIZE     FFmpeg -probesize，默认 32M（管道上 SPS 可能较晚，过小会「unspecified size」且无输出流）
 #   SCREENRECORD_ANALYZE_US     FFmpeg -analyzeduration（微秒），默认 20M
 #   ADB_SCREENRECORD_STDERR     默认 discard：adb screenrecord 的 stderr 不进终端；设为 /dev/stderr 便于排错

@@ -392,6 +392,8 @@ node server.cjs
 
 | 现象 | 原因与处理 |
 |------|------------|
+| **`npm: command not found`** / **`nvm.sh: No such file`** | 说明宿主机 **未装 Node 或未装 nvm**（`/root/.nvm/nvm.sh` 等路径**不一定存在**，勿强依赖）。**C1 彩条与 `c1:diag:sfu` 不需要 npm**：在 **`…/webrtc-sfu-pilot`** 下执行 **`bash scripts/run-c1-ffmpeg-ingest.sh --local`**、**`bash scripts/c1-sfu-stats-after-viewer.sh`**（依赖 **bash、docker compose、ffmpeg**）。若确要在 ECS 上跑 **`npm run build:client`** 等，再安装 **Node 20+**（官方仓库或 nvm）；**不推荐**仅为试点执行 **`apt install npm`**（易得太旧的 Node）。 |
+| **`git pull` 已 up to date，但缺少新脚本**（如 `scripts/c1-sfu-stats-after-viewer.sh`） | **远端仓库还没有该提交**（本机改完未 `git push`，或 ECS 跟踪分支不含该文件）。本机 **`git push`** 后再 ECS **`git pull`**。临时：在试点目录对容器日志 **`docker compose logs`** 再 **grep** C1 关键字（**PlainTransport stats**、**FFmpeg→SFU**、**SFU-to-browser**、**ingest producer getStats**、**consume:**）；可复制命令见 **`experiments/webrtc-sfu-pilot/README.md`** 紧接「ECS 上（SSH 登录后）」代码块后的说明段。 |
 | `cd: .../webrtc-sfu-pilot: No such file or directory` | 未克隆仓库或路径不对。执行 **§3** 的 `git clone`，或 `ls /opt` / `find / -maxdepth 4 -name webrtc-sfu-pilot -type d 2>/dev/null` 找到实际目录后再 `cd`。 |
 | `no configuration file provided: not found` | ① 当前目录没有 compose 文件：先 `cd …/webrtc-sfu-pilot`，`ls docker-compose.yml`。② **已 cd 仍有此报错**：多为 **Snap 版 Docker** 未正确识别工程目录，见上文 **绝对路径** / **`docker-up.sh`**。仍失败可改用 **APT 官方 Docker**（§2.1）。 |
 | `open …/docker-compose.yml: no such file or directory`（但同一台机器上 `ls` 该路径存在） | **Snap 版 Docker** 沙箱下守护进程**看不到**仓库所在目录（常见为 **`/opt/...`**）。**绝对路径无法修复**。把仓库放到 **`$HOME/wayphone`** 后再 compose，或改用 **§2.1 APT 官方 Docker**。 |
