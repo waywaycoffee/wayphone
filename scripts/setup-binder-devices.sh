@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # One-shot: mount binderfs + create binder/hwbinder/vndbinder + symlinks under /dev.
 # For Ubuntu 24.04+ kernels with CONFIG_ANDROID_BINDER_DEVICES="" (see docs/redroid-notes.md).
+# 持久化（fstab + 开机 systemd）: sudo bash scripts/install-wayphone-binder-persistence.sh
 set -euo pipefail
 
 if [[ "$(id -u)" -ne 0 ]]; then

@@ -1,0 +1,16 @@
+[Unit]
+Description=Wayphone binderfs nodes for Redroid (/dev/binder)
+Documentation=https://github.com/waywaycoffee/wayphone/blob/main/docs/redroid-notes.md
+After=systemd-modules-load.service local-fs.target
+Before=docker.service
+DefaultDependencies=no
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+Environment=WAYPHONE_ROOT=__WAYPHONE_ROOT__
+# 若仓库不在默认路径，在 /etc/systemd/system/wayphone-binderfs.service.d/override.conf 里设 Environment=WAYPHONE_ROOT=...
+ExecStart=/bin/bash -lc 'test -x "${WAYPHONE_ROOT}/scripts/setup-binder-devices.sh" && exec "${WAYPHONE_ROOT}/scripts/setup-binder-devices.sh"'
+
+[Install]
+WantedBy=multi-user.target

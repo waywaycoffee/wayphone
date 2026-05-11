@@ -20,6 +20,15 @@ adb version
 
 部分旧系统包名为 **`android-tools-adb`**。装好后可在 **ECS 本机** 直接 **`adb connect 127.0.0.1:5555`**（与根目录 `docker-compose.yml` 中 **127.0.0.1:5555** 映射一致）。
 
+### PoC：ADB 务必指定 Redroid（`127.0.0.1:5555`）
+
+宿主机上 **`adb devices` 常同时出现无法删除的 `emulator-5554`** 等条目，**不要**依赖「未带 `-s`」的默认设备。对 Redroid 请一律：
+
+- **`adb -s 127.0.0.1:5555 <子命令>`**，或  
+- 仓库根 **`bash scripts/adb-redroid.sh <子命令>`**（可用环境变量 **`REDROID_ADB_SERIAL`** 改序列号）。
+
+试点目录内脚本会通过 **`scripts/c1-default-android-serial.sh`** 在 Redroid 在线时自动 **`export ANDROID_SERIAL=127.0.0.1:5555`**，与显式 **`-s`** 等价。Cursor 侧持久规则见 **`.cursor/rules/redroid-adb.mdc`**。
+
 ## ADB 经 SSH（5555 只在 ECS 本机时）
 
 在**你自己的电脑**上（二选一）：
@@ -81,6 +90,23 @@ ls -la /dev/binder /dev/hwbinder /dev/vndbinder
 ```
 
 成功后再 **`docker compose up -d`**；根目录 `docker-compose.yml` 中 **`devices:`** 会把上述节点传入 Redroid。
+
+### 开机持久化（fstab + systemd，推荐）
+
+仅手跑 **`setup-binder-devices.sh`** 在**重启后**会丢挂载/节点（取决于内核是否预置节点）。推荐一次性安装：
+
+```bash
+cd /opt/wayphone   # 或你的 clone 路径
+sudo WAYPHONE_ROOT=/opt/wayphone bash scripts/install-wayphone-binder-persistence.sh
+```
+
+会做三件事：
+
+1. **`/etc/modules-load.d/wayphone-binder.conf`**：开机加载 **`binder_linux`**。  
+2. **`/etc/fstab`**：追加 **`binder /dev/binderfs binder nofail 0 0`**（挂载 binderfs）。  
+3. **`wayphone-binderfs.service`**（**`Before=docker.service`**）：启动早期再执行 **`scripts/setup-binder-devices.sh`**（`BINDER_CTL_ADD` + **`/dev/binder` 等符号链接**），避免 Redroid 先于节点就绪。
+
+仓库若不在 **`/opt/wayphone`**：安装前设 **`WAYPHONE_ROOT`**，或在 **`/etc/systemd/system/wayphone-binderfs.service.d/override.conf`** 里覆盖 **`Environment=WAYPHONE_ROOT=...`**。
 
 若 **`/boot/config-*` 里根本没有 `CONFIG_ANDROID_BINDER_IPC`**，则当前内核 **不支持** Android binder，只能换镜像/内核或机型。
 

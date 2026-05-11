@@ -1,0 +1,15 @@
+---
+description: Redroid ADB 与 PoC 网络约定（cloudPhone / wayphone）
+globs:
+  - "**/*.sh"
+  - "**/redroid-notes.md"
+  - "experiments/webrtc-sfu-pilot/**/*"
+---
+
+# Redroid + ADB
+
+- **PoC ARM 宿主机公网 IP** 以仓库文档为准：**`8.166.118.148`**；`MEDIASOUP_ANNOUNCED_IP` 须与此一致（浏览器实际访问的 EIP）。
+- 根目录 `docker-compose.yml` 将 Redroid ADB 映到 **`127.0.0.1:5555`**。宿主机上 **`adb devices` 可能出现无法删除的 `emulator-5554`**，**禁止依赖「未指定序列号」的 `adb`**，以免误连模拟器。
+- **Shell / 文档中的 adb 命令**：对 Redroid 一律使用 **`adb -s 127.0.0.1:5555 …`**，或仓库根 **`bash scripts/adb-redroid.sh …`**（可用 **`REDROID_ADB_SERIAL`** 覆盖序列号）。
+- **试点目录脚本**：应通过 **`c1-default-android-serial.sh`** 或显式 **`ANDROID_SERIAL`** / **`C1_ADB_SERIAL`**；若 Redroid 在线，默认应固定到 **`127.0.0.1:5555`**。
+- **Binder**：Ubuntu 24.04 常见需 **binderfs**；持久化用 **`sudo bash scripts/install-wayphone-binder-persistence.sh`**（fstab + systemd **`wayphone-binderfs.service`**），详见 **`docs/redroid-notes.md`**。
