@@ -195,6 +195,10 @@ if [[ "${ADB_SCREENRECORD_STDERR}" != "discard" ]]; then
 fi
 
 # screenrecord 输出为 annex B 字节流；经 libx264 重编码为 baseline + repeat-headers，与 ingest/浏览器更稳。
+#
+# Redroid 等环境：无限时长 screenrecord（不设 --time-limit）经 adb exec-out 管道时，FFmpeg 的 h264
+# demuxer 可能长时间无法产出首帧，RTP 一直为 0、浏览器黑屏。可设 SCREENRECORD_TIME_LIMIT=55～120
+# 分段结束 stdin，再配合 npm run c1:ingest:adb:loop 自动重拉 ingest。
 # stderr 默认丢弃；排错: ADB_SCREENRECORD_STDERR=/dev/stderr
 # 不用 exec：以便打印 adb/ffmpeg 退出码（exec 时 shell 已替换，无法记录）。
 set -o pipefail

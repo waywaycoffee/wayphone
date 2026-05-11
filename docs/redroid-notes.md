@@ -20,6 +20,19 @@ adb version
 
 部分旧系统包名为 **`android-tools-adb`**。装好后可在 **ECS 本机** 直接 **`adb connect 127.0.0.1:5555`**（与根目录 `docker-compose.yml` 中 **127.0.0.1:5555** 映射一致）。
 
+### C1 / `screenrecord` 管道黑屏（RTP `rtpBytesReceived=0`）
+
+部分 **Redroid** 上 **`adb exec-out screenrecord` 不设 `--time-limit`** 时，宿主机 **FFmpeg** 可能在 **数十秒内仍无法从管道得到可解码的首帧**，PlainTransport **一直收不到 RTP**，浏览器「仅观看」全黑。  
+**处理**：在跑 **`npm run c1:ingest:adb`** 前导出分段秒数（脚本会带 **`--time-limit`**），并配合 **`npm run c1:ingest:adb:loop`** 在段结束后自动重连：
+
+```bash
+export SCREENRECORD_TIME_LIMIT=60   # 或 55～120 之间试
+cd /opt/wayphone/experiments/webrtc-sfu-pilot
+npm run c1:ingest:adb:loop
+```
+
+仍须 **`MEDIASOUP_ANNOUNCED_IP=EIP`**、安全组 **UDP 40000–49999**。详见 **`experiments/webrtc-sfu-pilot/README.md`**（C1 / ingest）。
+
 ### PoC：ADB 务必指定 Redroid（`127.0.0.1:5555`）
 
 宿主机上 **`adb devices` 常同时出现无法删除的 `emulator-5554`** 等条目，**不要**依赖「未带 `-s`」的默认设备。对 Redroid 请一律：
