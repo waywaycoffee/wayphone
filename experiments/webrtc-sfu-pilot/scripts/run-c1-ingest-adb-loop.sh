@@ -1,24 +1,16 @@
 #!/usr/bin/env bash
 # ADB→RTP ingest 退出后自动重启（screenrecord/adb 管道 EOF、网络闪断、Redroid 限长等常见）。
 # 用法（在 experiments/webrtc-sfu-pilot 目录）:
-#   export ANDROID_SERIAL=127.0.0.1:5555
 #   npm run c1:ingest:adb:loop
-# 或: bash scripts/run-c1-ingest-adb-loop.sh
+# 多台 device 时自动优先 127.0.0.1:5555（Redroid）；否则请 export ANDROID_SERIAL=… 或 C1_ADB_SERIAL=…
 set -u
 REPO_DIR=$(cd "$(dirname "$0")/.." && pwd)
 cd "$REPO_DIR"
+_def_out=$(bash "${REPO_DIR}/scripts/c1-default-android-serial.sh") || exit 1
+eval "${_def_out}"
 export C1_INGEST_SOURCE=adb
 export MEDIASOUP_INGEST_CODEC="${MEDIASOUP_INGEST_CODEC:-h264}"
 SLEEP_SEC="${C1_INGEST_LOOP_SLEEP:-2}"
-
-# 多台 device 时子脚本会立刻 exit 1；未 export ANDROID_SERIAL 会导致本 loop 每 2s 空转刷屏。
-_dc=$(adb devices 2>/dev/null | awk 'NR>1 && $2=="device"{c++} END{print c+0}')
-if [[ "${_dc}" -gt 1 && -z "${ANDROID_SERIAL:-}" ]]; then
-  echo "error: 当前有 ${_dc} 台 adb device，但未设置 ANDROID_SERIAL。" >&2
-  echo "请先执行（再重跑本脚本）: export ANDROID_SERIAL=127.0.0.1:5555" >&2
-  adb devices >&2
-  exit 1
-fi
 
 while true; do
   echo "$(date -Is) c1:ingest:adb 启动…" >&2

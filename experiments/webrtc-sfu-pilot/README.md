@@ -124,17 +124,17 @@ docker compose logs --tail=30
 - 在 **仓库根目录** 安装：`adb -s 127.0.0.1:5555 install -r -g "experiments/webrtc-sfu-pilot/source app/10086_10.2.1.apk"`  
 （`*.apk` 已写入仓库根 `.gitignore`，勿 `git add` APK。）  
 
-**掌厅启动后系统弹窗「Allow … access all device logs?」**：多设备时先 **`export ANDROID_SERIAL=127.0.0.1:5555`**。仅等待并自动点 **「Allow one-time access」**：**`npm run adb:dismiss-log-dialog`**（你已自行 `am start` 后执行）；一键 **启动掌厅再点允许**：**`npm run adb:start-zhangting-dismiss-log-dialog`**。实现见 **`scripts/adb-dismiss-log-access-dialog.sh`**（解析 `android:id/log_access_dialog_allow_button` 的 `bounds`；解析失败时用 **`LOG_DIALOG_FALLBACK_X` / `LOG_DIALOG_FALLBACK_Y`**，默认 `360`/`1042` 对应 720×1280 实测）。若应用仍 **SIGSEGV** 秒退，属 APK/Redroid native 问题，授权脚本无法修复。
+**掌厅启动后系统弹窗「Allow … access all device logs?」**：多设备时脚本会**自动优先** **`127.0.0.1:5555`**（Redroid）；若要模拟器 **`export C1_ADB_SERIAL=emulator-5554`** 或 **`export ANDROID_SERIAL=…`**。仅等待并自动点 **「Allow one-time access」**：**`npm run adb:dismiss-log-dialog`**（你已自行 `am start` 后执行）；一键 **启动掌厅再点允许**：**`npm run adb:start-zhangting-dismiss-log-dialog`**。实现见 **`scripts/adb-dismiss-log-access-dialog.sh`**（解析 `android:id/log_access_dialog_allow_button` 的 `bounds`；解析失败时用 **`LOG_DIALOG_FALLBACK_X` / `LOG_DIALOG_FALLBACK_Y`**，默认 `360`/`1042` 对应 720×1280 实测）。若应用仍 **SIGSEGV** 秒退，属 APK/Redroid native 问题，授权脚本无法修复。
 
-**彩条 → Redroid/真机画面（掌厅等）**：宿主机需 **`adb devices` 为 `device`**（与 Redroid 同机时常为 `127.0.0.1:5555`）。可先 **`npm run c1:check:adb`** 自检。在同一目录执行 **`npm run c1:ingest:adb -- --local`**（等价于 `C1_INGEST_SOURCE=adb` + `run-c1`），将用 **`scripts/ffmpeg-ingest-h264-adb-screenrecord.sh`**：`adb exec-out screenrecord --output-format=h264` 管道进 FFmpeg，**libx264 baseline** 重编码后仍发往 **同一 PlainTransport RTP 端口**（ingest 仅 H264；若 `.env` 为 VP8 请改 **h264** 与 Router 一致）。多设备时 **`export ANDROID_SERIAL=序列号`**；分辨率/码率见脚本内 **`SCREENRECORD_*`** 环境变量。`screenrecord` 行为随 ROM 变化，若黑屏先看 **`adb exec-out screenrecord --output-format=h264 -`** 是否在本机可持续出字节。
+**彩条 → Redroid/真机画面（掌厅等）**：宿主机需 **`adb devices` 为 `device`**（与 Redroid 同机时常为 `127.0.0.1:5555`）。可先 **`npm run c1:check:adb`** 自检。在同一目录执行 **`npm run c1:ingest:adb -- --local`**（等价于 `C1_INGEST_SOURCE=adb` + `run-c1`），将用 **`scripts/ffmpeg-ingest-h264-adb-screenrecord.sh`**：`adb exec-out screenrecord --output-format=h264` 管道进 FFmpeg，**libx264 baseline** 重编码后仍发往 **同一 PlainTransport RTP 端口**（ingest 仅 H264；若 `.env` 为 VP8 请改 **h264** 与 Router 一致）。多设备时默认自动选 **`127.0.0.1:5555`**（见 **`scripts/c1-default-android-serial.sh`**）；否则 **`export ANDROID_SERIAL`** 或 **`C1_ADB_SERIAL`**。分辨率/码率见 **`SCREENRECORD_*`**。`screenrecord` 行为随 ROM 变化，若黑屏先看 **`adb exec-out screenrecord --output-format=h264 -`** 是否在本机可持续出字节。
 
 **ingest 自行断开**（`pgrep ffmpeg` 突然无输出）：多为 **adb 管道 EOF**（`screenrecord` 结束、设备断连、Redroid 限制）。可改用 **`npm run c1:ingest:adb:loop`**（`scripts/run-c1-ingest-adb-loop.sh`）：退出后 **`C1_INGEST_LOOP_SLEEP` 秒（默认 2）** 自动重拉 `run-c1` 并再起 FFmpeg。**注意**：若 **SFU 容器重启、RTP 端口变了**，循环只会重启 FFmpeg，仍可能打到旧端口；此时应 **停掉 loop → 再起 pilot → 再起 loop**。排错时用 **`ADB_SCREENRECORD_STDERR=/dev/stderr`**。
 
-**多台 `adb devices` 时**：**必须先 `export ANDROID_SERIAL=127.0.0.1:5555`** 再跑 **`c1:ingest:adb` / `c1:ingest:adb:loop`**。勿写成 **`pidof … && npm run …`** 且未在同一 shell 里 export——子进程 **继承不到** 你以为设过的变量（若 export 写在上一行但未执行/在别的终端则仍为空）。loop 脚本在 **>1 台 device 且未设 ANDROID_SERIAL** 时会 **直接退出** 并提示，避免每 2 秒刷屏。
+**多台 `adb devices` 时**：ingest / loop / diagnose / 日志授权脚本会**自动选用** **`127.0.0.1:5555`**（若在线）；与模拟器并存时一般**无需再手写 export**。改选：**`export ANDROID_SERIAL=…`** 或 **`export C1_ADB_SERIAL=…`**（须在 `adb devices` 列表中）。若列表里**没有** `127.0.0.1:5555` 且未 export，脚本会报错并列出设备。勿写成 **`pidof … && npm run …`** 且子 shell 未继承变量。
 
 **查「为什么退出」**（`git pull` 后）：ADB ingest 脚本在管道结束时会向 stderr 打一行 **`ingest 管道结束: adb_exit=… ffmpeg_exit=…`**。再配合：**`ADB_SCREENRECORD_STDERR=/dev/stderr`**（看 screenrecord 报错）、**`FFMPEG_LOGLEVEL=info`**（看 FFmpeg 细节）、宿主机 **`dmesg | tail`**（是否 OOM killer）、**`adb devices`**（是否仍 `device`）。常见：**screenrecord 自行结束**（部分 ROM 时长/策略）→ adb 侧先关 → FFmpeg stdin EOF → 进程退出。
 
-**RTCP 有包、RTP 口 tcpdump 无包**：多为 **screenrecord→FFmpeg stdin 断流**（非 SFU/NVENC/SELinux）。一键采样：**`export ANDROID_SERIAL=127.0.0.1:5555`** 后 **`npm run c1:diagnose:adb`**（`scripts/diagnose-adb-screenrecord.sh`，默认录约 12s 到 `/tmp/diag-screenrecord-*.h264` 并扫 stderr 关键字）。
+**RTCP 有包、RTP 口 tcpdump 无包**：多为 **screenrecord→FFmpeg stdin 断流**（非 SFU/NVENC/SELinux）。一键采样：**`npm run c1:diagnose:adb`**（多设备时同上自动 Redroid；需模拟器则 **`C1_ADB_SERIAL=…`**）（`scripts/diagnose-adb-screenrecord.sh`，默认录约 12s 到 `/tmp/diag-screenrecord-*.h264` 并扫 stderr 关键字）。
 
 **黑屏但日志里 `transport.getStats` 有 bytes、`framesDecoded=0`**：多为 FFmpeg→H264→Chrome 解码不兼容；可设 **`MEDIASOUP_INGEST_CODEC=vp8`** 并 **`run-c1-ffmpeg-ingest.sh`**。**同 ECS 宿主机**上 FFmpeg 请打 **`127.0.0.1:端口`**（脚本默认如此），勿长期用「本机 EIP」——云上 **UDP hairpin** 常导致 SFU 收不到 RTP。ECS 的 **`ffmpeg` 需带 libvpx**（一般 `apt install ffmpeg` 即可）。
 
@@ -149,7 +149,7 @@ docker compose logs --tail=30
 
 **完整总结（现象表、根因、清单、验证命令）见：** [`docs/layer-c1-lessons-learned.md`](docs/layer-c1-lessons-learned.md)。
 
-**Redroid 已切 Android 9 后的串流找因**：按 **Layer B → C1 彩条 → C1 adb** 分层（避免与掌厅 native 问题混淆），见 **`docs/layer-c1-lessons-learned.md` §11**。在试点目录执行 **`npm run c1:streaming:check`**（多设备时先 **`export ANDROID_SERIAL=127.0.0.1:5555`**）可汇总版本、adb/ffmpeg 前置与 ingest 日志片段。
+**Redroid 已切 Android 9 后的串流找因**：按 **Layer B → C1 彩条 → C1 adb** 分层（避免与掌厅 native 问题混淆），见 **`docs/layer-c1-lessons-learned.md` §11**。在试点目录执行 **`npm run c1:streaming:check`**（多设备时自动 **`127.0.0.1:5555`**，除非改 **`C1_ADB_SERIAL` / `ANDROID_SERIAL`**）可汇总版本、adb/ffmpeg 前置与 ingest 日志片段。
 
 ### 公网 HTTPS 一条链接（可发摄像头）
 

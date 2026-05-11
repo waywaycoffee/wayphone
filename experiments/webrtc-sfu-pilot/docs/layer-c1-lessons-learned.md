@@ -167,12 +167,12 @@ docker compose logs --tail=80 webrtc-sfu-pilot | grep -E 'PlainTransport stats|F
 | **0** | 版本 | `adb shell getprop ro.build.version.sdk` → **28** | `.env` 里 `REDROID_IMAGE` 未生效、容器未重建 |
 | **B** | Layer B（两 Tab 摄像头） | Tab2 能看到 Tab1 画面 | `MEDIASOUP_ANNOUNCED_IP`、安全组 **UDP 40000–49999**、浏览器是否 `127.0.0.1` 转发（见 `docs/webrtc-sfu-pilot.md` §3.2） |
 | **C1 彩条** | FFmpeg→PlainTransport（无 adb） | `rtpBytesReceived` 涨、`framesDecoded>0` | 镜像未 **build**、**RTCP mux**、**run-c1 端口** 不是当次（§3–§5、§10） |
-| **C1 adb** | `screenrecord`→FFmpeg→SFU | 同上，且画面为云机内容 | `adb` 非 **device**、**多台未设 ANDROID_SERIAL**、`screenrecord` 断流（`c1:diagnose:adb`）、掌厅未前台则可能只是桌面 |
+| **C1 adb** | `screenrecord`→FFmpeg→SFU | 同上，且画面为云机内容 | `adb` 非 **device**、多台且**无** `127.0.0.1:5555` 又未 **`ANDROID_SERIAL`/`C1_ADB_SERIAL`**、`screenrecord` 断流（`c1:diagnose:adb`）、掌厅未前台则可能只是桌面 |
 
 **ECS 上一键前置汇总**（在 `experiments/webrtc-sfu-pilot`）：
 
 ```bash
-export ANDROID_SERIAL=127.0.0.1:5555   # 多设备时必设
+# 多设备时一般自动选 127.0.0.1:5555；要模拟器则: export C1_ADB_SERIAL=emulator-5554
 npm run c1:streaming:check
 ```
 

@@ -111,6 +111,9 @@ while [[ $# -gt 0 ]]; do
 done
 
 ADB_BIN=${ADB_BIN:-adb}
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+_def=$(bash "${SCRIPT_DIR}/c1-default-android-serial.sh") || exit 1
+eval "${_def}"
 ANDROID_SERIAL=${ANDROID_SERIAL:-}
 SCREENRECORD_SIZE=${SCREENRECORD_SIZE:-720x1280}
 SCREENRECORD_BITRATE=${SCREENRECORD_BITRATE:-6000000}
@@ -169,8 +172,7 @@ if [[ -z "${ANDROID_SERIAL}" ]]; then
     ADB_FLAGS=(-s "${ANDROID_SERIAL}")
     echo "提示: 自动使用 ANDROID_SERIAL=${ANDROID_SERIAL}（多设备时请事先 export ANDROID_SERIAL）" >&2
   elif [[ "${_count}" -gt 1 ]]; then
-    echo "error: 多台 adb device，未指定序列号时 adb exec-out 会报「more than one device」且无画面进 FFmpeg。" >&2
-    echo "请先: export ANDROID_SERIAL=127.0.0.1:5555   # 或 adb devices 里 Redroid 那一行的序列号" >&2
+    echo "error: 多台 adb device 且 c1-default-android-serial 未能自动选用（无 127.0.0.1:5555）。请 export ANDROID_SERIAL 或 C1_ADB_SERIAL。" >&2
     "${ADB_BIN}" devices >&2
     exit 1
   fi

@@ -9,7 +9,7 @@
 #   LOG_DIALOG_WAIT_SEC=20 bash scripts/adb-dismiss-log-access-dialog.sh
 #
 # 环境变量:
-#   ANDROID_SERIAL              多设备必填
+#   ANDROID_SERIAL              多设备时可不设（自动 127.0.0.1:5555）；改选见 C1_ADB_SERIAL
 #   LOG_DIALOG_WAIT_SEC         最长等待秒数，默认 15
 #   LOG_DIALOG_POLL_SEC         轮询间隔，默认 0.2
 #   LOG_DIALOG_FALLBACK_X/Y     解析失败时回退 tap（默认 360/1042，对应 720x1280 实测）
@@ -33,6 +33,10 @@ for arg in "$@"; do
       ;;
   esac
 done
+
+REPO_DIR=$(cd "$(dirname "$0")/.." && pwd)
+_def=$(bash "${REPO_DIR}/scripts/c1-default-android-serial.sh") || exit 1
+eval "${_def}"
 
 ADB_FLAGS=()
 if [[ -n "${ANDROID_SERIAL:-}" ]]; then

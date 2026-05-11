@@ -2,10 +2,12 @@
 # Redroid / ECS 上「串流找因」分层自检：版本 → adb/ffmpeg →（可选）ingest 日志快照。
 # 在 experiments/webrtc-sfu-pilot 目录执行：
 #   bash scripts/c1-streaming-phased-check.sh
-# 多设备：  export ANDROID_SERIAL=127.0.0.1:5555
+# 多设备时自动优先 127.0.0.1:5555；否则 export ANDROID_SERIAL 或 C1_ADB_SERIAL
 set -euo pipefail
 REPO_DIR=$(cd "$(dirname "$0")/.." && pwd)
 cd "$REPO_DIR"
+_def=$(bash "${REPO_DIR}/scripts/c1-default-android-serial.sh") || exit 1
+eval "${_def}"
 
 ADB_FLAGS=()
 [[ -n "${ANDROID_SERIAL:-}" ]] && ADB_FLAGS+=(-s "${ANDROID_SERIAL}")

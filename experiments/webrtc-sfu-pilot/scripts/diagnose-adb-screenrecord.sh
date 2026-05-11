@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 # Redroid ADB screenrecord → FFmpeg 上游断流排查（RTCP 活、RTP 死时跑）。
 # 用法: cd experiments/webrtc-sfu-pilot && bash scripts/diagnose-adb-screenrecord.sh
-# 环境: ANDROID_SERIAL（多设备必填）、ADB_BIN、SCREENRECORD_* 与 ingest 脚本一致
+# 环境: ANDROID_SERIAL（多设备时可自动选 127.0.0.1:5555）、ADB_BIN、SCREENRECORD_* 与 ingest 脚本一致
 set -euo pipefail
 REPO_DIR=$(cd "$(dirname "$0")/.." && pwd)
 cd "$REPO_DIR"
+_def=$(bash "${REPO_DIR}/scripts/c1-default-android-serial.sh") || exit 1
+eval "${_def}"
 
 ADB_BIN=${ADB_BIN:-adb}
 ANDROID_SERIAL=${ANDROID_SERIAL:-}

@@ -4,6 +4,8 @@
 set -euo pipefail
 REPO_DIR=$(cd "$(dirname "$0")/.." && pwd)
 cd "$REPO_DIR"
+_def=$(bash "${REPO_DIR}/scripts/c1-default-android-serial.sh") || exit 1
+eval "${_def}"
 
 ok=0
 fail() { echo "✗ $*" >&2; ok=1; }
@@ -18,11 +20,6 @@ if adb "${ADB_FLAGS[@]}" devices 2>/dev/null | awk 'NR>1 && $2=="device"{f=1} EN
   echo "✓ adb: 至少一台 device"
 else
   fail "adb 无 device 状态（请 adb connect 127.0.0.1:5555 等）"
-fi
-
-_dc=$(adb devices 2>/dev/null | awk 'NR>1 && $2=="device"{c++} END{print c+0}')
-if [[ -z "${ANDROID_SERIAL:-}" && "${_dc}" -gt 1 ]]; then
-  fail "多台 adb device（${_dc} 台）但未设置 ANDROID_SERIAL；exec-out 会失败。请: export ANDROID_SERIAL=127.0.0.1:5555"
 fi
 
 if docker compose ps --status running 2>/dev/null | grep -q .; then
