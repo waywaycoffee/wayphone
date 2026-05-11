@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # 在 Ubuntu 20.04/22.04/24.04 ECS 上一键安装 Docker Engine + Compose 插件（官方仓库）
+# x86_64 / ARM64 通用：`deb [arch=$(dpkg --print-architecture) …]` 自动选对本机架构，勿用他架构 .deb。
 # 用法: sudo bash scripts/install-docker-ubuntu.sh
 
 set -euo pipefail
