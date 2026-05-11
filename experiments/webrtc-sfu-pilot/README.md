@@ -149,6 +149,8 @@ docker compose logs --tail=30
 
 **完整总结（现象表、根因、清单、验证命令）见：** [`docs/layer-c1-lessons-learned.md`](docs/layer-c1-lessons-learned.md)。
 
+**Redroid 已切 Android 9 后的串流找因**：按 **Layer B → C1 彩条 → C1 adb** 分层（避免与掌厅 native 问题混淆），见 **`docs/layer-c1-lessons-learned.md` §11**。在试点目录执行 **`npm run c1:streaming:check`**（多设备时先 **`export ANDROID_SERIAL=127.0.0.1:5555`**）可汇总版本、adb/ffmpeg 前置与 ingest 日志片段。
+
 ### 公网 HTTPS 一条链接（可发摄像头）
 
 不依赖 SSH 转发时：用 **Caddy** 在 443 上自动证书，浏览器打开 `https://你的域名/`。仓库内 **`docker-compose.caddy.yml`** + **`Caddyfile`**；**`MEDIASOUP_ANNOUNCED_IP` 仍填 EIP**。完整步骤：**`docs/aliyun-ecs-pilot.md` §4.2**。

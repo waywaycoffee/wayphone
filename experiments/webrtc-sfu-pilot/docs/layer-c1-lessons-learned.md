@@ -155,3 +155,25 @@ docker compose logs --tail=80 webrtc-sfu-pilot | grep -E 'PlainTransport stats|F
 
 - **仍不涨**：对照 **§4 RTCP mux**、**§5 run-c1 脚本**；宿主机 **`tcpdump -ni lo udp port <RTP端口>`** 是否在 ingest 运行时有包。  
 - **在涨仍黑屏**：再试 **`MEDIASOUP_INGEST_CODEC=vp8`** + **`npm run c1:ingest`**（§6）；并查云安全组 **UDP 40000–49999** 与 **`MEDIASOUP_ANNOUNCED_IP=EIP`**。
+
+---
+
+## 11. Redroid Android 9：串流分层找因（先断在哪一层）
+
+换 **Android 9** 后仍要**按层验证**，避免把「掌厅 native 崩溃」与「SFU / RTP 不通」混在一起猜。
+
+| 顺序 | 验证什么 | 通过标准 | 失败时优先怀疑 |
+|------|----------|----------|----------------|
+| **0** | 版本 | `adb shell getprop ro.build.version.sdk` → **28** | `.env` 里 `REDROID_IMAGE` 未生效、容器未重建 |
+| **B** | Layer B（两 Tab 摄像头） | Tab2 能看到 Tab1 画面 | `MEDIASOUP_ANNOUNCED_IP`、安全组 **UDP 40000–49999**、浏览器是否 `127.0.0.1` 转发（见 `docs/webrtc-sfu-pilot.md` §3.2） |
+| **C1 彩条** | FFmpeg→PlainTransport（无 adb） | `rtpBytesReceived` 涨、`framesDecoded>0` | 镜像未 **build**、**RTCP mux**、**run-c1 端口** 不是当次（§3–§5、§10） |
+| **C1 adb** | `screenrecord`→FFmpeg→SFU | 同上，且画面为云机内容 | `adb` 非 **device**、**多台未设 ANDROID_SERIAL**、`screenrecord` 断流（`c1:diagnose:adb`）、掌厅未前台则可能只是桌面 |
+
+**ECS 上一键前置汇总**（在 `experiments/webrtc-sfu-pilot`）：
+
+```bash
+export ANDROID_SERIAL=127.0.0.1:5555   # 多设备时必设
+npm run c1:streaming:check
+```
+
+再按上表从 **B → 彩条 → adb** 做人工步骤；**彩条通、adb 不通** → 问题在 **采集/Redroid**；**彩条也不通** → 先修 **SFU / ingest / 网络**，不要先怪 Android 版本。
