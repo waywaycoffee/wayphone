@@ -1,0 +1,19 @@
+{
+  "name": "cloudphone",
+  "private": true,
+  "description": "Repo root proxies npm scripts to experiments/webrtc-sfu-pilot（避免在 /opt/wayphone 根目录跑 npm 报 ENOENT）。完整开发请在 pilot 目录: cd experiments/webrtc-sfu-pilot && npm install",
+  "scripts": {
+    "pilot": "npm --prefix experiments/webrtc-sfu-pilot",
+    "start": "npm --prefix experiments/webrtc-sfu-pilot start",
+    "build:client": "npm --prefix experiments/webrtc-sfu-pilot run build:client",
+    "c1:ingest": "npm --prefix experiments/webrtc-sfu-pilot run c1:ingest --",
+    "c1:ingest:adb": "npm --prefix experiments/webrtc-sfu-pilot run c1:ingest:adb --",
+    "c1:ingest:adb:loop": "npm --prefix experiments/webrtc-sfu-pilot run c1:ingest:adb:loop --",
+    "c1:check:adb": "npm --prefix experiments/webrtc-sfu-pilot run c1:check:adb --",
+    "c1:diagnose:adb": "npm --prefix experiments/webrtc-sfu-pilot run c1:diagnose:adb --",
+    "c1:streaming:check": "npm --prefix experiments/webrtc-sfu-pilot run c1:streaming:check --",
+    "adb:dismiss-log-dialog": "npm --prefix experiments/webrtc-sfu-pilot run adb:dismiss-log-dialog --",
+    "adb:start-zhangting-dismiss-log-dialog": "npm --prefix experiments/webrtc-sfu-pilot run adb:start-zhangting-dismiss-log-dialog --",
+    "pilot:ingest-debug": "npm --prefix experiments/webrtc-sfu-pilot run pilot:ingest-debug --"
+  }
+}

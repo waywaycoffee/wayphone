@@ -67,6 +67,8 @@ bash scripts/deploy-ecs.sh
 | 多数 **阿里云普通 ECS**（**没有** `/dev/kvm`） | 用本仓库 **默认的 Redroid**（`docker compose up`） |
 | 少数机器有 **`/dev/kvm`** 且需要 **浏览器里直接看系统画面** | 再试 [docker-android](https://github.com/budtmo/docker-android)（`docker compose -f docker-compose.emulator.yml up`） |
 
+**模拟器「品牌」**：[docker-android 官方机型列表](https://github.com/budtmo/docker-android#list-of-devices) 只有 **三星 Galaxy、Nexus、Pixel C**，**没有**小米 / 华为 / OPPO / vivo 等国产厂商皮肤。本仓库 **`docker-compose.emulator.yml`** 默认 **`EMULATOR_DEVICE=Samsung Galaxy S10`**（与上游 Quick Start 一致）；若不想用三星可改为 **`Nexus 5`** 等列表内名称。需要更接近国产 ROM 或厂商风控行为时，只能 **真机**、或看上游提到的 **Genymotion 等第三方**。本仓库默认 **Redroid** 是 **AOSP 容器**，也不是品牌系统。
+
 **Docker 装好后**再跑：`bash scripts/check-env.sh`，看它建议你走哪条。
 
 ## 以 docker-android 为基时的 KVM 检查（在 ECS 上执行）
@@ -224,7 +226,7 @@ ssh -N -L 6080:127.0.0.1:6080 你的用户@ECS公网IP
 - **阿里云 ECS 分步**：`docs/aliyun-ecs-pilot.md`  
 - **x86 本地 Linux（家用/机房，与 ECS 同一套 compose）**：`docs/local-x86-linux.md`  
 - **Redroid / ADB / 掌厅备忘**：`docs/redroid-notes.md`  
-- **WebRTC SFU 试点（mediasoup）**：`docs/webrtc-sfu-pilot.md`  
+- **WebRTC SFU 试点（mediasoup）**：`docs/webrtc-sfu-pilot.md`；试点代码在 **`experiments/webrtc-sfu-pilot`**（`npm install` 在该目录执行）。**仓库根目录**也有 **`package.json`**，可从 **`/opt/wayphone`** 直接 **`npm run c1:ingest:adb:loop`** 等（转发到 pilot），避免误在根目录跑 npm 报 **ENOENT**。  
 - **Layer C（安卓画面进 SFU）路线图**：`docs/layer-c-roadmap.md`  
 - **Linux 云机防火墙与容量口径**：`docs/linux-cloud-lab.md`
 

@@ -30,7 +30,7 @@ fi
 
 if [[ "${ok}" != 0 ]]; then
   echo "" >&2
-  echo "修复后: cd experiments/webrtc-sfu-pilot && npm run c1:ingest:adb -- --local" >&2
+  echo "修复后: npm run c1:ingest:adb -- --local（仓库根或 pilot 目录均可）" >&2
   exit 1
 fi
 
