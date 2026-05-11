@@ -2,6 +2,10 @@
 # 见: https://github.com/budtmo/docker-android
 # 使用: docker compose -f docker-compose.emulator.yml up -d
 #
+# 机型皮肤：上游仅提供 Samsung Galaxy / Nexus / Pixel C（见 README「List of Devices」），
+# 无小米、华为、OPPO、vivo 等国产厂商官方皮肤。不想用三星时设 EMULATOR_DEVICE 为
+# 「Nexus 5」等列表内名称。Redroid 路线则是 AOSP 容器，同样不是品牌 ROM。
+#
 # 浏览器: http://127.0.0.1:6080 （公网请用 SSH 转发，勿对 0.0.0.0 全开放）
 #
 # 若本机 6080 已被占用，把左侧改成 "127.0.0.1:16080:6080" 后访问 16080
