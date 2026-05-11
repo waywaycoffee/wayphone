@@ -101,6 +101,10 @@ ls -la /dev/binder /dev/hwbinder /dev/vndbinder
 - **启动 Activity（Redroid 上 `dumpsys` 实测，随版本可能变）**：`com.mc10086.cmcc.base.StartPageActivity`（`MAIN` + `LAUNCHER`）。启动示例：  
   `adb -s 127.0.0.1:5555 shell am start -n com.greenpoint.android.mc10086.activity/com.mc10086.cmcc.base.StartPageActivity`  
 - **安装**：请使用 **官方渠道 APK**；勿使用来源不明的安装包。  
+- **`INSTALL_FAILED_NO_MATCHING_ABIS`（`res=-113`）**：APK 里 **`lib/` 下 .so`** 的 **ABI**（如 `arm64-v8a`、`armeabi-v7a`）与当前 Redroid 报告的 **CPU 能力** 无交集。常见于 **x86_64 云机 + 仅含 ARM so 的运营商/金融类 App**。  
+  - **在设备上看系统支持的 ABI**：`adb shell getprop ro.product.cpu.abilist`（或 `ro.product.cpu.abi`）。  
+  - **看 APK 带了哪些 ABI**（在 ECS 上，已装 `unzip`）：`unzip -l "…/10086_10.2.1.apk" | grep ' lib/'`；或 **`aapt dump badging …apk | grep native-code`**（`aapt` 来自 build-tools）。  
+  - **可选方向**（无通用保证）：换 **带 ARM 模拟/翻译** 的环境、在 **ARM 真机/ARM 云机** 上装、换官方是否提供 **x86 split**（多数没有）、或继续用 **已能装上的更高版本** 做 PoC（与「降版本避崩溃」目标冲突时需取舍）。**不是**加 `-r -g` 能解决的。  
 - **授权弹窗与串流（如何定位、能否模拟点击）**  
   - **是否「必须授权才能继续」**：冷启掌厅时看画面是否停在系统/应用对话框。推荐一键落盘再 **scp 拉回本机** 对照：**在 `experiments/webrtc-sfu-pilot` 执行 `npm run adb:capture-auth-debug`**（或仓库根同样命令），会在 ECS 上生成 **`/tmp/wayphone-auth-capture/zhangting-auth-时间戳.png`** 与 **`_uiautomator.xml`**（及摘要 grep 文件）；脚本结尾打印 **`scp` 示例**。手工等价命令仍可用：**`adb exec-out screencap -p > /tmp/screen.png`**、**`uiautomator dump` + `pull`**，在 XML 里搜 **`alert`**、**`permission`**、**`log_access_dialog`** 等。  
   - **本仓库已实现的自动「同意」**：仅针对系统 **「允许访问设备日志」** 一类弹窗（界面文案常为 **Allow … access all device logs?**），通过 **`uiautomator dump`** 查找资源 **`log_access_dialog_allow_button`**，计算 **`bounds` 中心点后 `adb shell input tap`**；解析失败时用环境变量 **`LOG_DIALOG_FALLBACK_X` / `LOG_DIALOG_FALLBACK_Y`**（默认 **`360`/`1042`**，对应 Redroid 常见 **720×1280**）。  
