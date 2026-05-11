@@ -207,7 +207,7 @@ set +e
   -f h264 -i - \
   -an \
   -c:v libx264 -preset ultrafast -tune zerolatency -profile:v baseline -level 3.1 \
-  -bf 0 -g 30 -keyint_min 30 \
+  -bf 0 -g 30 -keyint_min 1 \
   -force_key_frames "expr:eq(mod(n,30),0)" \
   -x264-params "repeat-headers=1:aud=1:bframes=0:min-keyint=1:keyint=30" \
   -payload_type "${PT}" -ssrc "${SSRC}" \
