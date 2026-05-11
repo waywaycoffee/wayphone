@@ -101,6 +101,14 @@ ls -la /dev/binder /dev/hwbinder /dev/vndbinder
 - **启动 Activity（Redroid 上 `dumpsys` 实测，随版本可能变）**：`com.mc10086.cmcc.base.StartPageActivity`（`MAIN` + `LAUNCHER`）。启动示例：  
   `adb -s 127.0.0.1:5555 shell am start -n com.greenpoint.android.mc10086.activity/com.mc10086.cmcc.base.StartPageActivity`  
 - **安装**：请使用 **官方渠道 APK**；勿使用来源不明的安装包。  
+- **授权弹窗与串流（如何定位、能否模拟点击）**  
+  - **是否「必须授权才能继续」**：冷启掌厅时看画面是否停在系统/应用对话框；或在 ECS 上 **`adb -s 127.0.0.1:5555 shell uiautomator dump /sdcard/ui.xml && adb pull /sdcard/ui.xml /tmp/`**，在 **`/tmp/ui.xml`** 里搜 **`alert`**、**`permission`**、**`button`**、应用包名相关 **`node`**。也可 **`adb exec-out screencap -p > /tmp/screen.png`** 肉眼确认。  
+  - **本仓库已实现的自动「同意」**：仅针对系统 **「允许访问设备日志」** 一类弹窗（界面文案常为 **Allow … access all device logs?**），通过 **`uiautomator dump`** 查找资源 **`log_access_dialog_allow_button`**，计算 **`bounds` 中心点后 `adb shell input tap`**；解析失败时用环境变量 **`LOG_DIALOG_FALLBACK_X` / `LOG_DIALOG_FALLBACK_Y`**（默认 **`360`/`1042`**，对应 Redroid 常见 **720×1280**）。  
+    - 试点目录：**`npm run adb:dismiss-log-dialog`**（你已 **`am start` 掌厅** 后执行）；或 **`npm run adb:start-zhangting-dismiss-log-dialog`**（先起掌厅再等弹窗并点 **Allow one-time access**）。脚本见 **`experiments/webrtc-sfu-pilot/scripts/adb-dismiss-log-access-dialog.sh`**。  
+    - **说明**：**「one-time」** 可能在一段时间后再次弹出；脚本只处理**这一类**系统控件 id，**不**覆盖存储/电话/悬浮窗等其它运行时权限框，也**不**处理应用内 H5/营销弹窗。  
+    - **Android 版本**：该类 **日志访问限制弹窗** 多见于较新系统；**Android 9** 上若掌厅**根本不弹**此框，脚本在超时后会正常退出（日志里写「未发现日志访问授权框」），**不代表**没有其它授权问题。  
+  - **与「串流停止」的关系**：若弹窗挡在最上层，**`screenrecord` 可能仍出画面（录到弹窗）**，但业务路径会卡住；若应用因**未授权**在后台逻辑里**自停/断流**，需对症授权。**native 崩溃（SIGSEGV）**、**`screenrecord` 时长/策略限制**、**ADB 断连** 等都会导致 ingest 停，**不能**靠点日志授权框解决。  
+  - **要自动点其它按钮时**：从同一份 **`uiautomator dump`** 里复制目标 **`resource-id`** 或 **`text`** 所在行的 **`bounds`**，按现有脚本写法另加一段 grep + **`input tap`** 即可（注意分辨率变化时要重算坐标）。  
 - **本仓库约定路径**（SFU 试点目录下，含空格目录名，shell 需加引号）：**`experiments/webrtc-sfu-pilot/source app/10086_10.2.1.apk`**（推荐 **10.2.1** 以降低与 Redroid 的兼容风险）；安装命令与 **`adb`** 说明见 **`experiments/webrtc-sfu-pilot/README.md`** 中「掌厅 APK 路径」一节。  
 - **APK 不会进 Git**（`.gitignore`），需在 **ECS** 上自备文件。Mac 上传到 ECS 示例（密钥、IP、本地路径请替换）：
 
