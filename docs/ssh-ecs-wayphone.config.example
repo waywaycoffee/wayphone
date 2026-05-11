@@ -1,0 +1,10 @@
+# 合并到本机 ~/.ssh/config 后，可用别名 ecs_wayphone 登录 / scp（无需每次写公网 IP）。
+#   cat docs/ssh-ecs-wayphone.config.example >> ~/.ssh/config
+# 然后: ssh ecs_wayphone
+#      scp ecs_wayphone:/opt/wayphone/... ~/Downloads/
+
+Host ecs_wayphone
+  HostName 8.166.118.148
+  User root
+  IdentityFile ~/.ssh/miyao.pem
+  # 可选: StrictHostKeyChecking accept-new

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Layer C1 全链路 H264：在本目录生成/整理 .env，去掉盖住 compose 的旧 pin，固定 ingest=h264，并打印 compose 生效值。
 # 用法（在 experiments/webrtc-sfu-pilot）:
-#   bash scripts/pilot-c1-h264-bootstrap.sh 8.163.51.24
-#   bash scripts/pilot-c1-h264-bootstrap.sh 8.163.51.24 --router-h264-only
-#   bash scripts/pilot-c1-h264-bootstrap.sh --dry-run 8.163.51.24   # 仅打印将执行的步骤，不写 .env
+#   bash scripts/pilot-c1-h264-bootstrap.sh 8.166.118.148
+#   bash scripts/pilot-c1-h264-bootstrap.sh 8.166.118.148 --router-h264-only
+#   bash scripts/pilot-c1-h264-bootstrap.sh --dry-run 8.166.118.148   # 仅打印将执行的步骤，不写 .env
 set -euo pipefail
 
 REPO_DIR=$(cd "$(dirname "$0")/.." && pwd)
@@ -36,7 +36,7 @@ if [[ -z "$ANNOUNCED_IP" ]]; then
   echo "用法: $0 <MEDIASOUP_ANNOUNCED_IP> [--router-h264-only]" >&2
   echo "  MEDIASOUP_ANNOUNCED_IP = 浏览器访问 WebRTC 媒体面时能路由到的 IP（公网 PoC 一般为 ECS EIP）" >&2
   echo "  --router-h264-only   = Router 只注册 H264，杜绝 VP8 混进协商" >&2
-  echo "示例: $0 8.163.51.24 --router-h264-only" >&2
+  echo "示例: $0 8.166.118.148 --router-h264-only" >&2
   exit 1
 fi
 

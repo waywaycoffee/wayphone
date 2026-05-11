@@ -2,7 +2,7 @@
 # 用法见 docs/aliyun-ecs-pilot.md「HTTPS 一条链接」与 README。
 #
 # 环境变量（docker-compose.caddy.yml 已传入）：
-#   CADDY_DOMAIN  例如 8-163-51-24.nip.io 或 app.example.com
+#   CADDY_DOMAIN  例如 8-166-118-148.nip.io 或 app.example.com
 #   UPSTREAM_PORT 与 webrtc-sfu-pilot 的 PORT 一致，默认 3000
 
 {$CADDY_DOMAIN} {

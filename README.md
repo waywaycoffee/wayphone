@@ -224,6 +224,7 @@ ssh -N -L 6080:127.0.0.1:6080 你的用户@ECS公网IP
 ## 本仓库文档索引
 
 - **阿里云 ECS 分步**：`docs/aliyun-ecs-pilot.md`  
+- **PoC ARM ECS SSH 别名 `ecs_wayphone`（`8.166.118.148`）**：`docs/ssh-ecs-wayphone.config.example`  
 - **x86 本地 Linux（家用/机房，与 ECS 同一套 compose）**：`docs/local-x86-linux.md`  
 - **Redroid / ADB / 掌厅备忘**：`docs/redroid-notes.md`  
 - **WebRTC SFU 试点（mediasoup）**：`docs/webrtc-sfu-pilot.md`；试点代码在 **`experiments/webrtc-sfu-pilot`**（`npm install` 在该目录执行）。**仓库根目录**也有 **`package.json`**，可从 **`/opt/wayphone`** 直接 **`npm run c1:ingest:adb:loop`** 等（转发到 pilot），避免误在根目录跑 npm 报 **ENOENT**。  

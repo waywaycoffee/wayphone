@@ -2,7 +2,7 @@
 # 前置：宿主机已 docker compose up -d 起好 webrtc（host 网络监听 127.0.0.1:PORT）。
 #
 # 示例（nip.io 免买域名，把 IP 的点换成横杠）：
-#   export CADDY_DOMAIN=8-163-51-24.nip.io
+#   export CADDY_DOMAIN=8-166-118-148.nip.io
 #   export UPSTREAM_PORT=3000
 #   docker compose -f docker-compose.caddy.yml up -d
 #
@@ -18,7 +18,7 @@ services:
       - "80:80"
       - "443:443"
     environment:
-      CADDY_DOMAIN: ${CADDY_DOMAIN:?set CADDY_DOMAIN e.g. 8-163-51-24.nip.io}
+      CADDY_DOMAIN: ${CADDY_DOMAIN:?set CADDY_DOMAIN e.g. 8-166-118-148.nip.io}
       UPSTREAM_PORT: ${UPSTREAM_PORT:-3000}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro

@@ -34,12 +34,12 @@ cp .env.pilot.example .env
 # 用编辑器改 .env：至少 MEDIASOUP_ANNOUNCED_IP、MEDIASOUP_INGEST_TEST=1、MEDIASOUP_INGEST_CODEC=h264 等
 ```
 
-**上传到 PoC ECS（当前文档示例主机 **8.163.51.24**；其它机器请改 IP）：**
+**上传到 PoC ECS（ARM，EIP **8.166.118.148**；本机 SSH 别名 **`ecs_wayphone`** 见 **`docs/ssh-ecs-wayphone.config.example`**）：**
 
 ```bash
-scp experiments/webrtc-sfu-pilot/.env root@8.163.51.24:/opt/wayphone/experiments/webrtc-sfu-pilot/.env
-# 或 rsync：
-# rsync -avz experiments/webrtc-sfu-pilot/.env root@8.163.51.24:/opt/wayphone/experiments/webrtc-sfu-pilot/.env
+scp experiments/webrtc-sfu-pilot/.env root@8.166.118.148:/opt/wayphone/experiments/webrtc-sfu-pilot/.env
+# 或: scp experiments/webrtc-sfu-pilot/.env ecs_wayphone:/opt/wayphone/experiments/webrtc-sfu-pilot/.env
+# rsync -avz experiments/webrtc-sfu-pilot/.env root@8.166.118.148:/opt/wayphone/experiments/webrtc-sfu-pilot/.env
 ```
 
 **ECS 上（SSH 登录后）：**
@@ -93,12 +93,12 @@ docker compose up --build
 
 #### 推荐：一条命令整理 `.env` + 固定 **H264**（解决「.env 与仓库不同步、总有 VP8」）
 
-在 **`experiments/webrtc-sfu-pilot`** 目录（把 **`8.163.51.24`** 换成你的 **EIP / 浏览器可达 IP**）：
+在 **`experiments/webrtc-sfu-pilot`** 目录（PoC EIP **`8.166.118.148`**；其它环境换成你的 **EIP / 浏览器可达 IP**）：
 
 ```bash
-bash scripts/pilot-c1-h264-bootstrap.sh 8.163.51.24
+bash scripts/pilot-c1-h264-bootstrap.sh 8.166.118.148
 # 可选：Router 只留 H264，彻底避免 VP8 进协商
-bash scripts/pilot-c1-h264-bootstrap.sh 8.163.51.24 --router-h264-only
+bash scripts/pilot-c1-h264-bootstrap.sh 8.166.118.148 --router-h264-only
 ```
 
 然后按脚本结尾提示执行 **`docker compose build --no-cache`**、**`run-c1`**。  

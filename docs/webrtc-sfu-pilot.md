@@ -71,7 +71,8 @@ Chrome / Edge / Safari 等要求 **`getUserMedia` 仅在「安全上下文」** 
 **PoC 推荐做法（不配证书）**：在你**个人电脑**上把 ECS 的 3000 转到本机回环，再用 **`http://127.0.0.1:3000`** 打开（此时属于安全上下文，可出摄像头）：
 
 ```bash
-ssh -N -L 3000:127.0.0.1:3000 root@8.163.51.24
+ssh -N -L 3000:127.0.0.1:3000 root@8.166.118.148
+# 若本机 ~/.ssh/config 已配置 Host ecs_wayphone：ssh -N -L 3000:127.0.0.1:3000 ecs_wayphone
 ```
 
 保持该终端不关，浏览器打开 **`http://127.0.0.1:3000/`**。`MEDIASOUP_ANNOUNCED_IP` 仍须填 **浏览器访问 SFU 媒体面时实际可达的 IP**（公网 PoC 一般为 **ECS 的 EIP**），否则第二路可能无画面。
@@ -80,7 +81,7 @@ ssh -N -L 3000:127.0.0.1:3000 root@8.163.51.24
 
 **信令已通、日志显示已 consume 仍黑屏**：mediasoup 建议在服务端 **先 `consume({ paused: true })`，再在浏览器 `recvTransport.consume` 完成后 `consumer.resume()`**。本仓库试点已实现 **`resumeConsumer` RPC**；远端 `<video>` 使用 **`muted`** 以利于自动播放。部署后请 **`docker compose up -d --build`** 再测。
 
-**正式环境 / 公网一条链接**：为域名（或 **nip.io**：`8-163-51-24.nip.io` 对应 EIP `8.163.51.24`）配置 **HTTPS**。本仓库试点目录已提供 **Caddy** 编排：**`experiments/webrtc-sfu-pilot/Caddyfile`** + **`docker-compose.caddy.yml`**，步骤见 **`docs/aliyun-ecs-pilot.md` §4.2**。
+**正式环境 / 公网一条链接**：为域名（或 **nip.io**：`8-166-118-148.nip.io` 对应 EIP `8.166.118.148`）配置 **HTTPS**。本仓库试点目录已提供 **Caddy** 编排：**`experiments/webrtc-sfu-pilot/Caddyfile`** + **`docker-compose.caddy.yml`**，步骤见 **`docs/aliyun-ecs-pilot.md` §4.2**。
 
 一键 smoke（仓库根目录，**自动选空闲端口**；会按需 `npm install` / `build:client`）：
 

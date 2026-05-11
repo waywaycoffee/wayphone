@@ -117,13 +117,13 @@ ls -la /dev/binder /dev/hwbinder /dev/vndbinder
 - **APK 不会进 Git**（`.gitignore`），需在 **ECS** 上自备文件。Mac 上传到 ECS 示例（密钥、IP、本地路径请替换）：
 
 ```bash
-# 1）在 ECS 上建目录（一次即可）（PoC 公网：8.163.51.24；非此机请替换）
-ssh -i ~/.ssh/miyao.pem root@8.163.51.24 'mkdir -p "/opt/wayphone/experiments/webrtc-sfu-pilot/source app"'
+# 1）在 ECS 上建目录（一次即可）（PoC：8.166.118.148，SSH 别名 ecs_wayphone 见 docs/ssh-ecs-wayphone.config.example）
+ssh -i ~/.ssh/miyao.pem root@8.166.118.148 'mkdir -p "/opt/wayphone/experiments/webrtc-sfu-pilot/source app"'
 
 # 2）上传（注意整行引号）
 scp -i ~/.ssh/miyao.pem \
   "/Users/mac/程序/cloudPhone/experiments/webrtc-sfu-pilot/source app/ChinaMobile10086.apk" \
-  root@8.163.51.24:"/opt/wayphone/experiments/webrtc-sfu-pilot/source app/ChinaMobile10086.apk"
+  root@8.166.118.148:"/opt/wayphone/experiments/webrtc-sfu-pilot/source app/ChinaMobile10086.apk"
 
 # 3）ECS 上安装（Redroid 为 127.0.0.1:5555 时）
 # adb -s 127.0.0.1:5555 install -r -g "/opt/wayphone/experiments/webrtc-sfu-pilot/source app/ChinaMobile10086.apk"

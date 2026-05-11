@@ -406,7 +406,7 @@ node server.cjs
 1. **主机名解析到当前 EIP**（二选一）  
    - **自有域名**：控制台把 **`A` 记录** 指到 ECS 的 **EIP**。  
    - **免备案 PoC（nip.io）**：公网 IP 把 **点改成横杠** 再加 **`.nip.io`**。  
-     - 例：EIP `8.163.51.24` → 主机名 **`8-163-51-24.nip.io`**（全球 DNS 会解析回该 IP，无需买域名）。
+     - 例：EIP `8.166.118.148` → 主机名 **`8-166-118-148.nip.io`**（全球 DNS 会解析回该 IP，无需买域名）。
 
 2. **安全组入方向** 在 §1 基础上 **再放行**（Let’s Encrypt 与 HTTPS）：  
    - **TCP `80/80`**（证书签发 HTTP 校验）  
@@ -420,7 +420,7 @@ node server.cjs
 ```bash
 cd /opt/wayphone/experiments/webrtc-sfu-pilot
 # 将下面域名换成你的 A 记录 或 nip.io 主机名
-export CADDY_DOMAIN=8-163-51-24.nip.io
+export CADDY_DOMAIN=8-166-118-148.nip.io
 export UPSTREAM_PORT=3000
 docker compose -f docker-compose.caddy.yml up -d
 docker compose -f docker-compose.caddy.yml logs -f
