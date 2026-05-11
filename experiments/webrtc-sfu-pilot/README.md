@@ -34,12 +34,12 @@ cp .env.pilot.example .env
 # 用编辑器改 .env：至少 MEDIASOUP_ANNOUNCED_IP、MEDIASOUP_INGEST_TEST=1、MEDIASOUP_INGEST_CODEC=h264 等
 ```
 
-**上传到 ECS（把 `root`、`EIP`、路径换成你的）：**
+**上传到 PoC ECS（当前文档示例主机 **8.163.51.24**；其它机器请改 IP）：**
 
 ```bash
-scp experiments/webrtc-sfu-pilot/.env root@EIP:/opt/wayphone/experiments/webrtc-sfu-pilot/.env
+scp experiments/webrtc-sfu-pilot/.env root@8.163.51.24:/opt/wayphone/experiments/webrtc-sfu-pilot/.env
 # 或 rsync：
-# rsync -avz experiments/webrtc-sfu-pilot/.env root@EIP:/opt/wayphone/experiments/webrtc-sfu-pilot/.env
+# rsync -avz experiments/webrtc-sfu-pilot/.env root@8.163.51.24:/opt/wayphone/experiments/webrtc-sfu-pilot/.env
 ```
 
 **ECS 上（SSH 登录后）：**
