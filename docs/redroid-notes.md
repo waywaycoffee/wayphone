@@ -41,6 +41,12 @@ adb devices
 
 根目录 `docker-compose.yml` 默认将 **5555 绑在 `127.0.0.1`**，请勿随意改为对公网 `0.0.0.0` 开放。
 
+## Android 版本与镜像（默认 Android 9）
+
+根目录 **`docker-compose.yml`** 默认镜像为 **`redroid/redroid:9.0.0-latest`**（**Android 9 / API 28**），用于降低部分业务 APK 在 **x86_64 Redroid** 上的兼容风险。若仓库根 **`.env`** 里设置了 **`REDROID_IMAGE`**，则以 `.env` 为准。
+
+**从其它 Android 版本切换过来时**：执行 **`docker compose pull`** 后 **`docker compose up -d --force-recreate`**。容器内 **用户数据默认不持久** 时，切换后需 **重新安装 APK**（如 **`10086_10.2.1.apk`**）。标签与能力以 [redroid-doc](https://github.com/remote-android/redroid-doc) 为准。
+
 ## 容器状态 `Restarting`、且 `docker port` 无 5555
 
 **现象**：`docker compose ps` 里 **STATUS** 为 **`Restarting (…)`**，`docker port cloudphone-redroid 5555/tcp` 提示 **no public port**。根因多是 **Redroid 没跑稳就反复退出**，端口映射不会正常生效。
@@ -95,7 +101,7 @@ ls -la /dev/binder /dev/hwbinder /dev/vndbinder
 - **启动 Activity（Redroid 上 `dumpsys` 实测，随版本可能变）**：`com.mc10086.cmcc.base.StartPageActivity`（`MAIN` + `LAUNCHER`）。启动示例：  
   `adb -s 127.0.0.1:5555 shell am start -n com.greenpoint.android.mc10086.activity/com.mc10086.cmcc.base.StartPageActivity`  
 - **安装**：请使用 **官方渠道 APK**；勿使用来源不明的安装包。  
-- **本仓库约定路径**（SFU 试点目录下，含空格目录名，shell 需加引号）：**`experiments/webrtc-sfu-pilot/source app/ChinaMobile10086.apk`**；安装命令与 **`adb`** 说明见 **`experiments/webrtc-sfu-pilot/README.md`** 中「掌厅 APK 路径」一节。  
+- **本仓库约定路径**（SFU 试点目录下，含空格目录名，shell 需加引号）：**`experiments/webrtc-sfu-pilot/source app/10086_10.2.1.apk`**（推荐 **10.2.1** 以降低与 Redroid 的兼容风险）；安装命令与 **`adb`** 说明见 **`experiments/webrtc-sfu-pilot/README.md`** 中「掌厅 APK 路径」一节。  
 - **APK 不会进 Git**（`.gitignore`），需在 **ECS** 上自备文件。Mac 上传到 ECS 示例（密钥、IP、本地路径请替换）：
 
 ```bash
@@ -104,11 +110,11 @@ ssh -i ~/.ssh/miyao.pem root@你的ECS_IP 'mkdir -p "/opt/wayphone/experiments/w
 
 # 2）上传（注意整行引号）
 scp -i ~/.ssh/miyao.pem \
-  "/Users/mac/程序/cloudPhone/experiments/webrtc-sfu-pilot/source app/ChinaMobile10086.apk" \
-  root@你的ECS_IP:"/opt/wayphone/experiments/webrtc-sfu-pilot/source app/ChinaMobile10086.apk"
+  "/Users/mac/程序/cloudPhone/experiments/webrtc-sfu-pilot/source app/10086_10.2.1.apk" \
+  root@你的ECS_IP:"/opt/wayphone/experiments/webrtc-sfu-pilot/source app/10086_10.2.1.apk"
 
 # 3）ECS 上安装（Redroid 为 127.0.0.1:5555 时）
-# adb -s 127.0.0.1:5555 install -r -g "/opt/wayphone/experiments/webrtc-sfu-pilot/source app/ChinaMobile10086.apk"
+# adb -s 127.0.0.1:5555 install -r -g "/opt/wayphone/experiments/webrtc-sfu-pilot/source app/10086_10.2.1.apk"
 ```  
 - **云化 / H5 深链形态（示意）**：掌厅侧常见为 **`com.greenpoint://android.mc10086.activity?url=<HTTPS 或活动页完整 URL>`**，例如：  
   `com.greenpoint://android.mc10086.activity?url=https://wx.10086.cn/qwhdhub/diy-client/…?A_C_CODE=…&channelId=…`  
