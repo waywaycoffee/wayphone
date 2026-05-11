@@ -203,7 +203,6 @@ set +e
   -probesize "${SCREENRECORD_PROBE_SIZE}" -analyzeduration "${SCREENRECORD_ANALYZE_US}" \
   -thread_queue_size 1024 \
   -fflags +genpts+discardcorrupt+igndts \
-  -use_wallclock_as_timestamps 1 \
   -f h264 -i - \
   -an \
   -c:v libx264 -preset ultrafast -tune zerolatency -profile:v baseline -level 3.1 \
