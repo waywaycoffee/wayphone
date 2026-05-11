@@ -151,6 +151,37 @@ ls -la /dev/binder /dev/hwbinder /dev/vndbinder
     - **说明**：**「one-time」** 可能在一段时间后再次弹出；脚本只处理**这一类**系统控件 id，**不**覆盖存储/电话/悬浮窗等其它运行时权限框，也**不**处理应用内 H5/营销弹窗。  
     - **Android 版本**：该类 **日志访问限制弹窗** 多见于较新系统；**Android 9** 上若掌厅**根本不弹**此框，脚本在超时后会正常退出（日志里写「未发现日志访问授权框」），**不代表**没有其它授权问题。  
   - **与「串流停止」的关系**：若弹窗挡在最上层，**`screenrecord` 可能仍出画面（录到弹窗）**，但业务路径会卡住；若应用因**未授权**在后台逻辑里**自停/断流**，需对症授权。**native 崩溃（SIGSEGV）**、**`screenrecord` 时长/策略限制**、**ADB 断连** 等都会导致 ingest 停，**不能**靠点日志授权框解决。  
+
+### 掌厅截图闭环（后台验证是否起来 + 拉回本机看画面）
+
+与 **WebRTC 串流**分开：先证明 **Redroid 里掌厅界面** 正常，再排 **FFmpeg / SFU**。全程在 **ECS（SSH）** 执行即可，**不必**在 ECS 上装 **`npm`**（用 **`bash scripts/…`**）。
+
+1. **确认 ADB 到 Redroid**（宿主机）：`adb -s 127.0.0.1:5555 devices` 为 **`device`**。  
+2. **（可选）冷启掌厅**（与试点脚本一致）：  
+   `adb -s 127.0.0.1:5555 shell am start -n com.greenpoint.android.mc10086.activity/com.mc10086.cmcc.base.StartPageActivity`  
+   等 **5～10 秒** 再截图（给 native / 首屏绘制时间）。  
+3. **一键截图 + UI 层次 XML**（在 **`/opt/wayphone/experiments/webrtc-sfu-pilot`**）：  
+   `bash scripts/adb-capture-screen-ui-for-auth.sh`  
+   默认输出目录 **`/tmp/wayphone-auth-capture/`**，文件名形如 **`zhangting-auth-时间戳.png`**、**`_uiautomator.xml`**、**`_grep-hints.txt`**。  
+   若需固定目录：`OUT_DIR=/var/tmp/zhangting-debug bash scripts/adb-capture-screen-ui-for-auth.sh`  
+   本机已装 npm 时等价：**`npm run adb:capture-auth-debug`**（须在试点目录）。  
+4. **（可选）处理「访问设备日志」弹窗后再截一屏**：  
+   `bash scripts/adb-dismiss-log-access-dialog.sh --start-zhangting`  
+   或你已前台掌厅时：**`bash scripts/adb-dismiss-log-access-dialog.sh`**，再重复第 3 步。  
+5. **拉回 Mac 看图**（脚本结尾会打印 **`scp` 示例**；密钥与 Host 以你本机为准）：  
+
+```bash
+# 将 ECS 上最新 png/xml 拉到本机（路径按 ls /tmp/wayphone-auth-capture/ 实际文件名改）
+scp -i ~/.ssh/miyao.pem 'root@8.166.118.148:/tmp/wayphone-auth-capture/zhangting-auth-*.png' ~/Downloads/
+# 若 ~/.ssh/config 已配 Host ecs_wayphone + IdentityFile：
+# scp 'ecs_wayphone:/tmp/wayphone-auth-capture/zhangting-auth-*.png' ~/Downloads/
+```
+
+6. **本机分析看什么**  
+   - **PNG**：是否停在 **启动图 / 白屏 / 黑屏 / 系统授权框 / 应用内弹窗**。  
+   - **XML**：搜 **`permission`**、**`Alert`**、**`log_access_dialog`**、**`允许`** 等（脚本已生成 **`_grep-hints.txt`** 摘要）。  
+   - **与串流对照**：截图里 **有正常启动图** 但 **SFU 仍 `packetCount` 卡几十** → 优先 **ingest 管道 / screenrecord**；截图里 **黑屏或秒退** → 优先 **掌厅进程 / native / ABI**，不要先改 **`MEDIASOUP_ANNOUNCED_IP`**。
+
   - **要自动点其它按钮时**：从同一份 **`uiautomator dump`** 里复制目标 **`resource-id`** 或 **`text`** 所在行的 **`bounds`**，按现有脚本写法另加一段 grep + **`input tap`** 即可（注意分辨率变化时要重算坐标）。  
 - **本仓库约定路径（文档文件名）**（SFU 试点目录下，含空格目录名，shell 需加引号）：**`experiments/webrtc-sfu-pilot/source app/ChinaMobile10086.apk`**。**实测该 APK 仅含 `lib/arm64-v8a` 与 `lib/armeabi-v7a`**，**不能**装在 **x86_64** Redroid 上（**`INSTALL_FAILED_NO_MATCHING_ABIS`**）。是否可装只看 **`unzip -l …apk | grep ' lib/'`** 与 **`getprop ro.product.cpu.abilist`**，与文件名无关。掌厅类应用多数**无 x86 so**，**x86 ECS 上跑掌厅**通常不可行；需 **ARM 实例** 或 **非掌厅的 x86 演示 App** 做串流 PoC。安装命令见 **`experiments/webrtc-sfu-pilot/README.md`**。  
 - **APK 不会进 Git**（`.gitignore`），需在 **ECS** 上自备文件。Mac 上传到 ECS 示例（密钥、IP、本地路径请替换）：
