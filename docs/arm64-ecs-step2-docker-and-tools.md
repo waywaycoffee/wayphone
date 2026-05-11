@@ -105,7 +105,7 @@ sudo apt-get install -y adb
 
 ## 6. 下一步
 
-- Redroid / Binder：**`docs/redroid-notes.md`**（含 **fstab + `wayphone-binderfs.service` 持久化**：`sudo bash scripts/install-wayphone-binder-persistence.sh`）  
+- Redroid / Binder：**`docs/redroid-notes.md`**（含 **fstab + `wayphone-binderfs.service` 持久化**：`sudo bash scripts/install-wayphone-binder-persistence.sh`；**新机器一条命令**：`sudo bash scripts/bootstrap-arm-ecs-binder-persistence.sh`）  
 - 试点 **`webrtc-sfu-pilot`**：**`experiments/webrtc-sfu-pilot/README.md`**、`docs/aliyun-ecs-pilot.md`；**`MEDIASOUP_ANNOUNCED_IP`** 与 PoC 文档 EIP 一致（**`8.166.118.148`**）。  
 
 PoC 主机 SSH 别名：**`docs/ssh-ecs-wayphone.config.example`**
