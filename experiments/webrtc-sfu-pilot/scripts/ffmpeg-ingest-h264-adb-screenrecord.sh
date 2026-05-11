@@ -140,8 +140,9 @@ fi
 PT=${INGEST_PT:-96}
 SSRC=${INGEST_SSRC:-111222333}
 SCREENRECORD_TIME_LIMIT=${SCREENRECORD_TIME_LIMIT:-0}
-SCREENRECORD_PROBE_SIZE=${SCREENRECORD_PROBE_SIZE:-33554432}
-SCREENRECORD_ANALYZE_US=${SCREENRECORD_ANALYZE_US:-20000000}
+# screenrecord 比特率有限，凑满默认 32MB 探测可能要数分钟，RTP 长期为 0；先小探测再解码更稳。
+SCREENRECORD_PROBE_SIZE=${SCREENRECORD_PROBE_SIZE:-2097152}
+SCREENRECORD_ANALYZE_US=${SCREENRECORD_ANALYZE_US:-2000000}
 ADB_SCREENRECORD_STDERR=${ADB_SCREENRECORD_STDERR:-discard}
 FFMPEG_LOGLEVEL=${FFMPEG_LOGLEVEL:-warning}
 
@@ -208,7 +209,7 @@ set +e
   -c:v libx264 -preset ultrafast -tune zerolatency -profile:v baseline -level 3.1 \
   -bf 0 -g 30 -keyint_min 30 \
   -force_key_frames "expr:eq(mod(n,30),0)" \
-  -x264-params "repeat-headers=1:aud=1:bframes=0" \
+  -x264-params "repeat-headers=1:aud=1:bframes=0:min-keyint=1:keyint=30" \
   -payload_type "${PT}" -ssrc "${SSRC}" \
   -f rtp -pkt_size 1200 \
   "${RTP_URL}"
