@@ -1,7 +1,17 @@
 # 合并到本机 ~/.ssh/config 后，可用别名 ecs_wayphone 登录 / scp（无需每次写公网 IP）。
-#   cat docs/ssh-ecs-wayphone.config.example >> ~/.ssh/config
-# 然后: ssh ecs_wayphone
-#      scp ecs_wayphone:/opt/wayphone/... ~/Downloads/
+#
+# 1）把下面 Host 段追加到 ~/.ssh/config（路径写你本机克隆目录，不要用占位符 /path/to）：
+#   cat "/Users/mac/程序/cloudPhone/docs/ssh-ecs-wayphone.config.example" >> ~/.ssh/config
+#   # 或先 cd 到仓库根再: cat docs/ssh-ecs-wayphone.config.example >> ~/.ssh/config
+#
+# 2）核对解析（应看到 hostname 8.166.118.148，而不是 127.0.0.1）：
+#   ssh -G ecs_wayphone 2>/dev/null | grep -i '^hostname '
+#
+# 3）zsh 下 scp 含通配符时，整段远程路径要加引号，否则 zsh 会在本机展开 * 并报 no matches：
+#   scp 'ecs_wayphone:/tmp/wayphone-auth-capture/zhangting-auth-*.png' ~/Downloads/
+#   或不用通配：先 ssh 上去 ls，再 scp 单个文件名。
+#
+# 4）注释行不要整行粘贴进终端执行；以 # 开头的行是说明，不是命令。
 
 Host ecs_wayphone
   HostName 8.166.118.148
