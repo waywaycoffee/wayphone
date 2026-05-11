@@ -14,6 +14,7 @@
     "c1:streaming:check": "npm --prefix experiments/webrtc-sfu-pilot run c1:streaming:check --",
     "adb:dismiss-log-dialog": "npm --prefix experiments/webrtc-sfu-pilot run adb:dismiss-log-dialog --",
     "adb:start-zhangting-dismiss-log-dialog": "npm --prefix experiments/webrtc-sfu-pilot run adb:start-zhangting-dismiss-log-dialog --",
+    "adb:capture-auth-debug": "npm --prefix experiments/webrtc-sfu-pilot run adb:capture-auth-debug --",
     "pilot:ingest-debug": "npm --prefix experiments/webrtc-sfu-pilot run pilot:ingest-debug --"
   }
 }

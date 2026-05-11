@@ -102,7 +102,7 @@ ls -la /dev/binder /dev/hwbinder /dev/vndbinder
   `adb -s 127.0.0.1:5555 shell am start -n com.greenpoint.android.mc10086.activity/com.mc10086.cmcc.base.StartPageActivity`  
 - **安装**：请使用 **官方渠道 APK**；勿使用来源不明的安装包。  
 - **授权弹窗与串流（如何定位、能否模拟点击）**  
-  - **是否「必须授权才能继续」**：冷启掌厅时看画面是否停在系统/应用对话框；或在 ECS 上 **`adb -s 127.0.0.1:5555 shell uiautomator dump /sdcard/ui.xml && adb pull /sdcard/ui.xml /tmp/`**，在 **`/tmp/ui.xml`** 里搜 **`alert`**、**`permission`**、**`button`**、应用包名相关 **`node`**。也可 **`adb exec-out screencap -p > /tmp/screen.png`** 肉眼确认。  
+  - **是否「必须授权才能继续」**：冷启掌厅时看画面是否停在系统/应用对话框。推荐一键落盘再 **scp 拉回本机** 对照：**在 `experiments/webrtc-sfu-pilot` 执行 `npm run adb:capture-auth-debug`**（或仓库根同样命令），会在 ECS 上生成 **`/tmp/wayphone-auth-capture/zhangting-auth-时间戳.png`** 与 **`_uiautomator.xml`**（及摘要 grep 文件）；脚本结尾打印 **`scp` 示例**。手工等价命令仍可用：**`adb exec-out screencap -p > /tmp/screen.png`**、**`uiautomator dump` + `pull`**，在 XML 里搜 **`alert`**、**`permission`**、**`log_access_dialog`** 等。  
   - **本仓库已实现的自动「同意」**：仅针对系统 **「允许访问设备日志」** 一类弹窗（界面文案常为 **Allow … access all device logs?**），通过 **`uiautomator dump`** 查找资源 **`log_access_dialog_allow_button`**，计算 **`bounds` 中心点后 `adb shell input tap`**；解析失败时用环境变量 **`LOG_DIALOG_FALLBACK_X` / `LOG_DIALOG_FALLBACK_Y`**（默认 **`360`/`1042`**，对应 Redroid 常见 **720×1280**）。  
     - 试点目录：**`npm run adb:dismiss-log-dialog`**（你已 **`am start` 掌厅** 后执行）；或 **`npm run adb:start-zhangting-dismiss-log-dialog`**（先起掌厅再等弹窗并点 **Allow one-time access**）。脚本见 **`experiments/webrtc-sfu-pilot/scripts/adb-dismiss-log-access-dialog.sh`**。  
     - **说明**：**「one-time」** 可能在一段时间后再次弹出；脚本只处理**这一类**系统控件 id，**不**覆盖存储/电话/悬浮窗等其它运行时权限框，也**不**处理应用内 H5/营销弹窗。  

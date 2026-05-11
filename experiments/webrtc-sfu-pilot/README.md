@@ -124,6 +124,8 @@ docker compose logs --tail=30
 - 在 **仓库根目录** 安装：`adb -s 127.0.0.1:5555 install -r -g "experiments/webrtc-sfu-pilot/source app/10086_10.2.1.apk"`  
 （`*.apk` 已写入仓库根 `.gitignore`，勿 `git add` APK。）  
 
+**对照「授权框 vs 串流停」**：**`npm run adb:capture-auth-debug`** — 在 ECS 上生成截图 + **`uiautomator` 层次 XML**（默认 **`/tmp/wayphone-auth-capture/`**），按终端里 **`scp` 示例拉回笔记本打开；冷启掌厅后立刻跑一次，再跑 **`npm run adb:start-zhangting-dismiss-log-dialog`** 后再跑一次，对比是否仍有弹窗。  
+
 **掌厅启动后系统弹窗「Allow … access all device logs?」**：多设备时脚本会**自动优先** **`127.0.0.1:5555`**（Redroid）；若要模拟器 **`export C1_ADB_SERIAL=emulator-5554`** 或 **`export ANDROID_SERIAL=…`**。仅等待并自动点 **「Allow one-time access」**：**`npm run adb:dismiss-log-dialog`**（你已自行 `am start` 后执行）；一键 **启动掌厅再点允许**：**`npm run adb:start-zhangting-dismiss-log-dialog`**。实现见 **`scripts/adb-dismiss-log-access-dialog.sh`**（解析 `android:id/log_access_dialog_allow_button` 的 `bounds`；解析失败时用 **`LOG_DIALOG_FALLBACK_X` / `LOG_DIALOG_FALLBACK_Y`**，默认 `360`/`1042` 对应 720×1280 实测）。若应用仍 **SIGSEGV** 秒退，属 APK/Redroid native 问题，授权脚本无法修复。
 
 **彩条 → Redroid/真机画面（掌厅等）**：宿主机需 **`adb devices` 为 `device`**（与 Redroid 同机时常为 `127.0.0.1:5555`）。可先 **`npm run c1:check:adb`** 自检。在同一目录执行 **`npm run c1:ingest:adb -- --local`**（等价于 `C1_INGEST_SOURCE=adb` + `run-c1`），将用 **`scripts/ffmpeg-ingest-h264-adb-screenrecord.sh`**：`adb exec-out screenrecord --output-format=h264` 管道进 FFmpeg，**libx264 baseline** 重编码后仍发往 **同一 PlainTransport RTP 端口**（ingest 仅 H264；若 `.env` 为 VP8 请改 **h264** 与 Router 一致）。多设备时默认自动选 **`127.0.0.1:5555`**（见 **`scripts/c1-default-android-serial.sh`**）；否则 **`export ANDROID_SERIAL`** 或 **`C1_ADB_SERIAL`**。分辨率/码率见 **`SCREENRECORD_*`**。`screenrecord` 行为随 ROM 变化，若黑屏先看 **`adb exec-out screenrecord --output-format=h264 -`** 是否在本机可持续出字节。

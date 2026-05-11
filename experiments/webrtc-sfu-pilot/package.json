@@ -18,6 +18,7 @@
     "c1:diagnose:adb": "bash scripts/diagnose-adb-screenrecord.sh",
     "adb:dismiss-log-dialog": "bash scripts/adb-dismiss-log-access-dialog.sh",
     "adb:start-zhangting-dismiss-log-dialog": "bash scripts/adb-dismiss-log-access-dialog.sh --start-zhangting",
+    "adb:capture-auth-debug": "bash scripts/adb-capture-screen-ui-for-auth.sh",
     "pilot:ingest-debug": "bash scripts/pilot-ingest-debug.sh",
     "c1:streaming:check": "bash scripts/c1-streaming-phased-check.sh"
   },
