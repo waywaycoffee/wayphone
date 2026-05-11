@@ -45,7 +45,7 @@ adb devices
 
 根目录 **`docker-compose.yml`** 默认镜像为 **`redroid/redroid:9.0.0-latest`**（**Android 9 / API 28**），用于降低部分业务 APK 在容器上的兼容风险；若需更新可试 **`11.0.0-latest`**、**`13.0.0_*`** 等（以 [redroid-doc](https://github.com/remote-android/redroid-doc) 为准）。若仓库根 **`.env`** 里设置了 **`REDROID_IMAGE`**，则以 `.env` 为准。
 
-**从其它 Android 版本切换过来时**：执行 **`docker compose pull`** 后 **`docker compose up -d --force-recreate`**。容器内 **用户数据默认不持久** 时，切换后需 **重新安装 APK**（如 **`10086_10.2.1.apk`**）。标签与能力以 [redroid-doc](https://github.com/remote-android/redroid-doc) 为准。
+**从其它 Android 版本切换过来时**：执行 **`docker compose pull`** 后 **`docker compose up -d --force-recreate`**。容器内 **用户数据默认不持久** 时，切换后需 **重新安装 APK**（x86 云实验约定 **`ChinaMobile10086.apk`**，见下）。标签与能力以 [redroid-doc](https://github.com/remote-android/redroid-doc) 为准。
 
 ## 容器状态 `Restarting`、且 `docker port` 无 5555
 
@@ -103,7 +103,7 @@ ls -la /dev/binder /dev/hwbinder /dev/vndbinder
 - **安装**：请使用 **官方渠道 APK**；勿使用来源不明的安装包。  
 - **`INSTALL_FAILED_NO_MATCHING_ABIS`（`res=-113`）**：APK 里 **`lib/` 下 .so`** 的 **ABI**（如 `arm64-v8a`、`armeabi-v7a`）与当前 Redroid 报告的 **CPU 能力** 无交集。常见于 **x86_64 云机 + 仅含 ARM so 的运营商/金融类 App**。  
   - **在设备上看系统支持的 ABI**：`adb shell getprop ro.product.cpu.abilist`（或 `ro.product.cpu.abi`）。  
-  - **看 APK 带了哪些 ABI**（在 ECS 上，已装 `unzip`）：`unzip -l "…/10086_10.2.1.apk" | grep ' lib/'`；或 **`aapt dump badging …apk | grep native-code`**（`aapt` 来自 build-tools）。  
+  - **看 APK 带了哪些 ABI**（在 ECS 上，已装 `unzip`）：`unzip -l "…/ChinaMobile10086.apk" | grep ' lib/'`；或 **`aapt dump badging …apk | grep native-code`**（`aapt` 来自 build-tools）。  
   - **可选方向**（无通用保证）：换 **带 ARM 模拟/翻译** 的环境、在 **ARM 真机/ARM 云机** 上装、换官方是否提供 **x86 split**（多数没有）、或继续用 **已能装上的更高版本** 做 PoC（与「降版本避崩溃」目标冲突时需取舍）。**不是**加 `-r -g` 能解决的。  
 - **授权弹窗与串流（如何定位、能否模拟点击）**  
   - **是否「必须授权才能继续」**：冷启掌厅时看画面是否停在系统/应用对话框。推荐一键落盘再 **scp 拉回本机** 对照：**在 `experiments/webrtc-sfu-pilot` 执行 `npm run adb:capture-auth-debug`**（或仓库根同样命令），会在 ECS 上生成 **`/tmp/wayphone-auth-capture/zhangting-auth-时间戳.png`** 与 **`_uiautomator.xml`**（及摘要 grep 文件）；脚本结尾打印 **`scp` 示例**。手工等价命令仍可用：**`adb exec-out screencap -p > /tmp/screen.png`**、**`uiautomator dump` + `pull`**，在 XML 里搜 **`alert`**、**`permission`**、**`log_access_dialog`** 等。  
@@ -113,7 +113,7 @@ ls -la /dev/binder /dev/hwbinder /dev/vndbinder
     - **Android 版本**：该类 **日志访问限制弹窗** 多见于较新系统；**Android 9** 上若掌厅**根本不弹**此框，脚本在超时后会正常退出（日志里写「未发现日志访问授权框」），**不代表**没有其它授权问题。  
   - **与「串流停止」的关系**：若弹窗挡在最上层，**`screenrecord` 可能仍出画面（录到弹窗）**，但业务路径会卡住；若应用因**未授权**在后台逻辑里**自停/断流**，需对症授权。**native 崩溃（SIGSEGV）**、**`screenrecord` 时长/策略限制**、**ADB 断连** 等都会导致 ingest 停，**不能**靠点日志授权框解决。  
   - **要自动点其它按钮时**：从同一份 **`uiautomator dump`** 里复制目标 **`resource-id`** 或 **`text`** 所在行的 **`bounds`**，按现有脚本写法另加一段 grep + **`input tap`** 即可（注意分辨率变化时要重算坐标）。  
-- **本仓库约定路径**（SFU 试点目录下，含空格目录名，shell 需加引号）：**`experiments/webrtc-sfu-pilot/source app/10086_10.2.1.apk`**（推荐 **10.2.1** 以降低与 Redroid 的兼容风险）；安装命令与 **`adb`** 说明见 **`experiments/webrtc-sfu-pilot/README.md`** 中「掌厅 APK 路径」一节。  
+- **本仓库约定路径（x86 云 / Redroid）**（SFU 试点目录下，含空格目录名，shell 需加引号）：**`experiments/webrtc-sfu-pilot/source app/ChinaMobile10086.apk`**。若某安装包仅有 **ARM** native 库，在 **x86_64** Redroid 上会 **`INSTALL_FAILED_NO_MATCHING_ABIS`**，需换带 **x86/x86_64** 或通用包的渠道版本。安装命令见 **`experiments/webrtc-sfu-pilot/README.md`**「掌厅 APK 路径」。  
 - **APK 不会进 Git**（`.gitignore`），需在 **ECS** 上自备文件。Mac 上传到 ECS 示例（密钥、IP、本地路径请替换）：
 
 ```bash
@@ -122,11 +122,11 @@ ssh -i ~/.ssh/miyao.pem root@8.163.51.24 'mkdir -p "/opt/wayphone/experiments/we
 
 # 2）上传（注意整行引号）
 scp -i ~/.ssh/miyao.pem \
-  "/Users/mac/程序/cloudPhone/experiments/webrtc-sfu-pilot/source app/10086_10.2.1.apk" \
-  root@8.163.51.24:"/opt/wayphone/experiments/webrtc-sfu-pilot/source app/10086_10.2.1.apk"
+  "/Users/mac/程序/cloudPhone/experiments/webrtc-sfu-pilot/source app/ChinaMobile10086.apk" \
+  root@8.163.51.24:"/opt/wayphone/experiments/webrtc-sfu-pilot/source app/ChinaMobile10086.apk"
 
 # 3）ECS 上安装（Redroid 为 127.0.0.1:5555 时）
-# adb -s 127.0.0.1:5555 install -r -g "/opt/wayphone/experiments/webrtc-sfu-pilot/source app/10086_10.2.1.apk"
+# adb -s 127.0.0.1:5555 install -r -g "/opt/wayphone/experiments/webrtc-sfu-pilot/source app/ChinaMobile10086.apk"
 ```  
 - **云化 / H5 深链形态（示意）**：掌厅侧常见为 **`com.greenpoint://android.mc10086.activity?url=<HTTPS 或活动页完整 URL>`**，例如：  
   `com.greenpoint://android.mc10086.activity?url=https://wx.10086.cn/qwhdhub/diy-client/…?A_C_CODE=…&channelId=…`  

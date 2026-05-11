@@ -119,9 +119,9 @@ docker compose logs --tail=30
 **推荐（默认）**：在 **与 Docker 同一台 ECS 宿主机**、**本目录**执行 **`bash scripts/run-c1-ffmpeg-ingest.sh`**（或 **`npm run c1:ingest`**）。脚本会读取 **`docker compose logs`**（及容器 `docker logs`），解析当次 **`ffmpeg-ingest-h264.sh <host> <port>`** 或 **`mediasoup RTP tuple:`**，再启动 FFmpeg，**避免容器重启后端口变化还要手抄**。  
 **备选**：终端里若已打印 **`bash scripts/ffmpeg-ingest-h264.sh …`** 或 **`ffmpeg-ingest-vp8.sh`**，也可原样执行（排错、或无 compose 时）。浏览器打开页面后 **只点「仅观看」**。说明：**`docs/layer-c-roadmap.md`** §C1.1。
 
-**掌厅 APK 路径**：放在 **`source app/10086_10.2.1.apk`**（相对本目录 `experiments/webrtc-sfu-pilot/`；目录名含空格，路径请加引号）。  
-- 在 **本目录** 安装：`adb -s 127.0.0.1:5555 install -r -g "source app/10086_10.2.1.apk"`  
-- 在 **仓库根目录** 安装：`adb -s 127.0.0.1:5555 install -r -g "experiments/webrtc-sfu-pilot/source app/10086_10.2.1.apk"`  
+**掌厅 APK 路径（x86 云 / Redroid 实验约定）**：放在 **`source app/ChinaMobile10086.apk`**（相对本目录 `experiments/webrtc-sfu-pilot/`；目录名含空格，路径请加引号）。该包名便于与 **x86** 实例上安装（部分仅含 ARM `.so` 的安装包会出现 **`INSTALL_FAILED_NO_MATCHING_ABIS`**）。  
+- 在 **本目录** 安装：`adb -s 127.0.0.1:5555 install -r -g "source app/ChinaMobile10086.apk"`  
+- 在 **仓库根目录** 安装：`adb -s 127.0.0.1:5555 install -r -g "experiments/webrtc-sfu-pilot/source app/ChinaMobile10086.apk"`  
 （`*.apk` 已写入仓库根 `.gitignore`，勿 `git add` APK。）  
 
 **对照「授权框 vs 串流停」**：**`npm run adb:capture-auth-debug`** — 在 ECS 上生成截图 + **`uiautomator` 层次 XML**（默认 **`/tmp/wayphone-auth-capture/`**），按终端里 **`scp` 示例拉回笔记本打开；冷启掌厅后立刻跑一次，再跑 **`npm run adb:start-zhangting-dismiss-log-dialog`** 后再跑一次，对比是否仍有弹窗。  
