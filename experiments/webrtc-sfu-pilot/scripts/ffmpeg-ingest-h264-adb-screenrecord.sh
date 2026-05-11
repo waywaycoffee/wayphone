@@ -2,7 +2,7 @@
 # Layer C1 扩展：ADB screenrecord（H264 raw）→ FFmpeg 重编码 → 与彩条脚本相同的 RTP 出口（mediasoup PlainTransport ingest）。
 # 前置：宿主机已 adb devices 为 device；Redroid/真机已打开掌厅或任意待投画面。
 # 用法与 ffmpeg-ingest-h264.sh 相同（host/port/[rtcp]、INGEST_PT、INGEST_SSRC 等）：
-#   export ANDROID_SERIAL=127.0.0.1:5555   # 多设备时
+#   多设备时自动 127.0.0.1:5555；或 export ANDROID_SERIAL / C1_ADB_SERIAL
 #   bash scripts/ffmpeg-ingest-h264-adb-screenrecord.sh 127.0.0.1 41234
 #   bash scripts/ffmpeg-ingest-h264-adb-screenrecord.sh 127.0.0.1 41234 41235
 #
