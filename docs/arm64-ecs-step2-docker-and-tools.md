@@ -17,13 +17,18 @@ dpkg --print-architecture   # 期望: arm64
 
 本仓库脚本使用 Docker **官方 Ubuntu 源**，`deb [arch=$(dpkg --print-architecture) …]` 在 ARM64 上会自动选 **arm64** 包。
 
+**若出现 `cd: /opt/wayphone: No such file or directory`，说明尚未 clone，必须先执行下面 `git clone`（URL 换成你的 fork）。**
+
 ```bash
 sudo apt-get update
 sudo apt-get install -y git curl
-git clone https://github.com/waywaycoffee/wayphone.git /opt/wayphone   # 或你的 fork 地址
+sudo mkdir -p /opt
+sudo git clone https://github.com/waywaycoffee/wayphone.git /opt/wayphone   # 或你的 fork
 cd /opt/wayphone
 sudo bash scripts/install-docker-ubuntu.sh
 ```
+
+**无 sudo 写 `/opt` 时**，可 clone 到主目录：`git clone … ~/wayphone && cd ~/wayphone && sudo bash scripts/install-docker-ubuntu.sh`。
 
 安装结束后应看到类似：
 
