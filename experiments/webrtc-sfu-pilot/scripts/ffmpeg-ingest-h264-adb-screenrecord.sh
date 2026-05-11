@@ -203,12 +203,15 @@ set +e
   -probesize "${SCREENRECORD_PROBE_SIZE}" -analyzeduration "${SCREENRECORD_ANALYZE_US}" \
   -thread_queue_size 1024 \
   -fflags +genpts+discardcorrupt+igndts \
+  -flags low_delay \
   -f h264 -i - \
   -an \
   -c:v libx264 -preset ultrafast -tune zerolatency -profile:v baseline -level 3.1 \
   -bf 0 -g 30 -keyint_min 1 \
-  -x264-params "repeat-headers=1:aud=1:bframes=0:min-keyint=1:keyint=30:scenecut=0" \
+  -x264-params "repeat-headers=1:aud=1:bframes=0:min-keyint=1:keyint=30:scenecut=0:sync-lookahead=0:rc-lookahead=0" \
   -payload_type "${PT}" -ssrc "${SSRC}" \
+  -flush_packets 1 \
+  -muxdelay 0 -muxpreload 0 \
   -f rtp -pkt_size 1200 \
   "${RTP_URL}"
 # Ctrl+C / 信号打断时 PIPESTATUS 元素可能少于 2；set -u 下须先复制到数组再取下标，勿直接写 ff_rc=${PIPESTATUS 的第二项}
