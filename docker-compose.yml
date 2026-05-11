@@ -4,7 +4,7 @@
 
 services:
   redroid:
-    # 默认 Android 9（API 28），降低部分 App 在 x86_64 容器上的兼容风险；可覆盖 REDROID_IMAGE
+    # 默认 Android 9（API 28）；可覆盖 REDROID_IMAGE（如试 11 / 13）
     image: ${REDROID_IMAGE:-redroid/redroid:9.0.0-latest}
     container_name: cloudphone-redroid
     restart: unless-stopped

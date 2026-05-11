@@ -43,7 +43,7 @@ adb devices
 
 ## Android 版本与镜像（默认 Android 9）
 
-根目录 **`docker-compose.yml`** 默认镜像为 **`redroid/redroid:9.0.0-latest`**（**Android 9 / API 28**），用于降低部分业务 APK 在 **x86_64 Redroid** 上的兼容风险。若仓库根 **`.env`** 里设置了 **`REDROID_IMAGE`**，则以 `.env` 为准。
+根目录 **`docker-compose.yml`** 默认镜像为 **`redroid/redroid:9.0.0-latest`**（**Android 9 / API 28**），用于降低部分业务 APK 在容器上的兼容风险；若需更新可试 **`11.0.0-latest`**、**`13.0.0_*`** 等（以 [redroid-doc](https://github.com/remote-android/redroid-doc) 为准）。若仓库根 **`.env`** 里设置了 **`REDROID_IMAGE`**，则以 `.env` 为准。
 
 **从其它 Android 版本切换过来时**：执行 **`docker compose pull`** 后 **`docker compose up -d --force-recreate`**。容器内 **用户数据默认不持久** 时，切换后需 **重新安装 APK**（如 **`10086_10.2.1.apk`**）。标签与能力以 [redroid-doc](https://github.com/remote-android/redroid-doc) 为准。
 
