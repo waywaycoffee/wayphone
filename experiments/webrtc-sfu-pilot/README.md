@@ -119,7 +119,7 @@ docker compose logs --tail=30
 **推荐（默认）**：在 **与 Docker 同一台 ECS 宿主机**、**本目录**执行 **`bash scripts/run-c1-ffmpeg-ingest.sh`**（或 **`npm run c1:ingest`**）。脚本会读取 **`docker compose logs`**（及容器 `docker logs`），解析当次 **`ffmpeg-ingest-h264.sh <host> <port>`** 或 **`mediasoup RTP tuple:`**，再启动 FFmpeg，**避免容器重启后端口变化还要手抄**。  
 **备选**：终端里若已打印 **`bash scripts/ffmpeg-ingest-h264.sh …`** 或 **`ffmpeg-ingest-vp8.sh`**，也可原样执行（排错、或无 compose 时）。浏览器打开页面后 **只点「仅观看」**。说明：**`docs/layer-c-roadmap.md`** §C1.1。
 
-**掌厅 APK 路径（x86 云 / Redroid 实验约定）**：放在 **`source app/ChinaMobile10086.apk`**（相对本目录 `experiments/webrtc-sfu-pilot/`；目录名含空格，路径请加引号）。该包名便于与 **x86** 实例上安装（部分仅含 ARM `.so` 的安装包会出现 **`INSTALL_FAILED_NO_MATCHING_ABIS`**）。  
+**掌厅 APK 路径（文档约定文件名）**：放在 **`source app/ChinaMobile10086.apk`**（相对本目录；目录名含空格请加引号）。**文件名与 CPU 架构无关**；安装前在 ECS 上执行 **`unzip -l …apk | grep ' lib/'`**：若仅有 **`lib/arm64-v8a`** / **`lib/armeabi-v7a`** 而无 **`lib/x86_64`**，则在 **x86_64 Redroid** 上会 **`INSTALL_FAILED_NO_MATCHING_ABIS`**，需 **ARM 云机/真机** 或换带 **x86** so 的包（运营商 App 通常无）。  
 - 在 **本目录** 安装：`adb -s 127.0.0.1:5555 install -r -g "source app/ChinaMobile10086.apk"`  
 - 在 **仓库根目录** 安装：`adb -s 127.0.0.1:5555 install -r -g "experiments/webrtc-sfu-pilot/source app/ChinaMobile10086.apk"`  
 （`*.apk` 已写入仓库根 `.gitignore`，勿 `git add` APK。）  

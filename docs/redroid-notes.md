@@ -113,7 +113,7 @@ ls -la /dev/binder /dev/hwbinder /dev/vndbinder
     - **Android 版本**：该类 **日志访问限制弹窗** 多见于较新系统；**Android 9** 上若掌厅**根本不弹**此框，脚本在超时后会正常退出（日志里写「未发现日志访问授权框」），**不代表**没有其它授权问题。  
   - **与「串流停止」的关系**：若弹窗挡在最上层，**`screenrecord` 可能仍出画面（录到弹窗）**，但业务路径会卡住；若应用因**未授权**在后台逻辑里**自停/断流**，需对症授权。**native 崩溃（SIGSEGV）**、**`screenrecord` 时长/策略限制**、**ADB 断连** 等都会导致 ingest 停，**不能**靠点日志授权框解决。  
   - **要自动点其它按钮时**：从同一份 **`uiautomator dump`** 里复制目标 **`resource-id`** 或 **`text`** 所在行的 **`bounds`**，按现有脚本写法另加一段 grep + **`input tap`** 即可（注意分辨率变化时要重算坐标）。  
-- **本仓库约定路径（x86 云 / Redroid）**（SFU 试点目录下，含空格目录名，shell 需加引号）：**`experiments/webrtc-sfu-pilot/source app/ChinaMobile10086.apk`**。若某安装包仅有 **ARM** native 库，在 **x86_64** Redroid 上会 **`INSTALL_FAILED_NO_MATCHING_ABIS`**，需换带 **x86/x86_64** 或通用包的渠道版本。安装命令见 **`experiments/webrtc-sfu-pilot/README.md`**「掌厅 APK 路径」。  
+- **本仓库约定路径（文档文件名）**（SFU 试点目录下，含空格目录名，shell 需加引号）：**`experiments/webrtc-sfu-pilot/source app/ChinaMobile10086.apk`**。**实测该 APK 仅含 `lib/arm64-v8a` 与 `lib/armeabi-v7a`**，**不能**装在 **x86_64** Redroid 上（**`INSTALL_FAILED_NO_MATCHING_ABIS`**）。是否可装只看 **`unzip -l …apk | grep ' lib/'`** 与 **`getprop ro.product.cpu.abilist`**，与文件名无关。掌厅类应用多数**无 x86 so**，**x86 ECS 上跑掌厅**通常不可行；需 **ARM 实例** 或 **非掌厅的 x86 演示 App** 做串流 PoC。安装命令见 **`experiments/webrtc-sfu-pilot/README.md`**。  
 - **APK 不会进 Git**（`.gitignore`），需在 **ECS** 上自备文件。Mac 上传到 ECS 示例（密钥、IP、本地路径请替换）：
 
 ```bash
