@@ -22,6 +22,12 @@
     "pilot:ingest-debug": "bash scripts/pilot-ingest-debug.sh",
     "c1:streaming:check": "bash scripts/c1-streaming-phased-check.sh",
     "c1:diag:sfu": "bash scripts/c1-sfu-stats-after-viewer.sh",
+    "c1:safe:stop": "bash scripts/c1-ingest-safe.sh stop",
+    "c1:safe:status": "bash scripts/c1-ingest-safe.sh status",
+    "c1:safe:pilot-recreate": "bash scripts/c1-ingest-safe.sh pilot-recreate",
+    "c1:safe:colorbar": "bash scripts/c1-ingest-safe.sh colorbar",
+    "c1:safe:adb": "bash scripts/c1-ingest-safe.sh adb",
+    "c1:safe:adb-loop": "bash scripts/c1-ingest-safe.sh adb-loop",
     "c1:ingest:adb:short": "env SCREENRECORD_TIME_LIMIT=20 C1_INGEST_SOURCE=adb bash scripts/run-c1-ffmpeg-ingest.sh --local",
     "c1:ingest:adb:short:v": "env SCREENRECORD_TIME_LIMIT=20 ADB_SCREENRECORD_STDERR=/dev/stderr FFMPEG_LOGLEVEL=info C1_INGEST_SOURCE=adb bash scripts/run-c1-ffmpeg-ingest.sh --local"
   },

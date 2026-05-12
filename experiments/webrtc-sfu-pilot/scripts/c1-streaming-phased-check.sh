@@ -30,6 +30,7 @@ bash scripts/pilot-ingest-debug.sh || true
 
 echo
 echo "========== 3) 分层串流测试顺序（请人工执行，用于定位断在哪一层）=========="
+echo "  0) 停干净 / 单路 ingest（勿彩条+ADB 并行）: bash scripts/c1-ingest-safe.sh stop && bash scripts/c1-ingest-safe.sh status"
 echo "  A) 浏览器这条腿（与 ADB 无关）：MEDIASOUP_INGEST_TEST=1 起 pilot →  npm run c1:ingest -- --local  （彩条）→ 页里仅观看"
 echo "     另开 SSH:  npm run c1:diag:sfu   看 FFmpeg→SFU packetCount、SFU-to-browser outbound-rtp 是否 >0"
 echo "     浏览器: chrome://webrtc-internals 看 ICE succeeded、inbound-rtp video bytes 是否涨"

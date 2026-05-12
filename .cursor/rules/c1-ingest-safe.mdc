@@ -1,0 +1,32 @@
+---
+description: C1 PlainTransport ingest 安全操作（单路 ffmpeg、切换时清 comedia 状态）
+globs:
+  - "experiments/webrtc-sfu-pilot/**/*"
+  - "**/layer-c1-lessons-learned.md"
+  - "**/redroid-notes.md"
+---
+
+# C1 ingest 自动化规则（避免黑屏 / 统计卡 52）
+
+## 必须遵守
+
+- **同一时间只允许一条** 发往当前 ingest **RTP 端口** 的宿主 `ffmpeg`。**彩条**（`ffmpeg-ingest-h264.sh` / `testsrc`）与 **ADB**（`ffmpeg-ingest-h264-adb-screenrecord.sh`）**禁止并行**；否则同一 **PT=101、SSRC=111222333** 混打，PlainTransport **comedia** 易绑死**旧源端口**，表现为 **`bytesReceived` 暴涨、`rtpBytesReceived` / `FFmpeg→SFU packetCount` 卡约 52、浏览器黑屏**。
+- **切换 ADB ↔ 彩条**、或 **`docker compose` 重启 pilot 后**、或怀疑 **日志里 `remote=` 与 `tcpdump` 源口不一致**：先 **`bash experiments/webrtc-sfu-pilot/scripts/c1-ingest-safe.sh stop`**，再 **`pilot-recreate`**（或 **`--recreate-pilot colorbar|adb`**），再 **只起一种** ingest，浏览器 **硬刷新 → 仅观看**。
+- **`tcpdump`** 的 **UDP 端口** 必须与 **`pgrep -af ffmpeg` 里 `rtp://127.0.0.1:<端口>`** 一致；**不要**沿用历史端口（如 44640、48086）。
+
+## 推荐命令（试点目录 `experiments/webrtc-sfu-pilot`）
+
+- 停干净：`bash scripts/c1-ingest-safe.sh stop`
+- 看是否单路：`bash scripts/c1-ingest-safe.sh status`
+- 重建 pilot 清 PlainTransport：`bash scripts/c1-ingest-safe.sh pilot-recreate`
+- 彩条（前台）：`bash scripts/c1-ingest-safe.sh colorbar` 或 **`bash scripts/c1-ingest-safe.sh --recreate-pilot colorbar`**
+- ADB 单段（前台）：`export SCREENRECORD_TIME_LIMIT=30` 后 **`bash scripts/c1-ingest-safe.sh adb`**
+- ADB 循环：`bash scripts/c1-ingest-safe.sh adb-loop`
+
+## npm（若 ECS 有 Node）
+
+`package.json` 中 **`c1:safe:*`** 与上面对应。
+
+## 与 Redroid 规则关系
+
+ADB 序列号仍遵守 **`.cursor/rules/redroid-adb.mdc`**（**`127.0.0.1:5555`** / **`c1-default-android-serial.sh`**）。
