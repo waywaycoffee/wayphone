@@ -22,6 +22,7 @@
     "pilot:ingest-debug": "bash scripts/pilot-ingest-debug.sh",
     "c1:streaming:check": "bash scripts/c1-streaming-phased-check.sh",
     "c1:diag:sfu": "bash scripts/c1-sfu-stats-after-viewer.sh",
+    "c1:diag:sfu:last": "bash scripts/c1-sfu-stats-after-viewer.sh --last-consume",
     "c1:safe:stop": "bash scripts/c1-ingest-safe.sh stop",
     "c1:safe:status": "bash scripts/c1-ingest-safe.sh status",
     "c1:safe:pilot-recreate": "bash scripts/c1-ingest-safe.sh pilot-recreate",

@@ -192,7 +192,7 @@ npm run c1:streaming:check
 2. 容器已 **`MEDIASOUP_INGEST_TEST=1`**，`.env` 与 **`export MEDIASOUP_INGEST_CODEC=h264`**（或容器一致）对齐。
 3. 在 **`experiments/webrtc-sfu-pilot`**：`npm run c1:ingest -- --local`（走 **`ffmpeg-ingest-h264.sh` 彩条**）。
 4. 浏览器打开 **`http://<EIP>:3000/`**，**只点「仅观看」**，等约 8 秒。
-5. **SSH**：`npm run c1:diag:sfu`（或 `bash scripts/c1-sfu-stats-after-viewer.sh`）。关注：
+5. **SSH**：`npm run c1:diag:sfu`（或 `bash scripts/c1-sfu-stats-after-viewer.sh`）。**多次点「仅观看」** 时 tail 里会叠多段统计，易把「旧段正常、新段全 0」拼在一起误判；请用 **`bash scripts/c1-sfu-stats-after-viewer.sh --last-consume`**（默认 tail 800，不够则 **`--last-consume 2000`**）或 **`npm run c1:diag:sfu:last`**，只看**最后一次** `consume:` 之后的块。关注：
    - **`FFmpeg→SFU`**：`packetCount` / `byteCount` 在 **1.5s 与 5s** 两行里是否**明显变大**（持续 ingest 时应持续上涨；若长期卡在几十，见下文 B）。
    - **`SFU-to-browser`**：`consumer outbound-rtp packetCount` 是否 **> 0**。
 6. **浏览器**：打开 **`chrome://webrtc-internals`**，选中当前连接，看 **ICE / selected candidate pair** 是否为 **succeeded**，**inbound-rtp**（video）**bytesReceived** 是否随时间上涨。
@@ -211,6 +211,6 @@ npm run c1:streaming:check
 - **云安全组**：入站 **UDP 40000–49999**；**`MEDIASOUP_ANNOUNCED_IP`** 为浏览器可达的 **公网 EIP**。
 - **容器重启**：ingest **RTP 端口会变**，必须 **kill 旧 ffmpeg** 后按**当次** `docker compose logs` 里的 **`mediasoup RTP tuple` / `ingest_rtcp_port`** 再 **`npm run c1:ingest`** / **`c1:ingest:adb`**。
 
-**一键命令索引**（均在试点目录）：`npm run c1:diag:sfu`、`npm run c1:ingest:adb:short`、`npm run c1:ingest:adb:short:v`、`npm run pilot:ingest-debug`、`npm run c1:streaming:check`。
+**一键命令索引**（均在试点目录）：`npm run c1:diag:sfu`、`npm run c1:diag:sfu:last`、`npm run c1:ingest:adb:short`、`npm run c1:ingest:adb:short:v`、`npm run pilot:ingest-debug`、`npm run c1:streaming:check`。
 
 **自动化「停干净 → 可选重建 pilot → 单路 ingest」**（避免双 ffmpeg、comedia 绑死旧源口）：`bash scripts/c1-ingest-safe.sh`（子命令 `stop` / `status` / `pilot-recreate` / `colorbar` / `adb` / `adb-loop`，可选 `--recreate-pilot`）；无 npm 时同上。Cursor 持久说明见 **`.cursor/rules/c1-ingest-safe.mdc`**。
