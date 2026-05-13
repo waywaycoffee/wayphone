@@ -51,7 +51,7 @@ docker compose config | grep -E 'MEDIASOUP_|PILOT_VERSION'
 docker compose build --no-cache && docker compose up -d --force-recreate
 ```
 
-**SSH / 自动化里 `npm: command not found`**：PoC 上 **SFU 在 Docker 里编好了**，宿主机 **不必**装 Node/npm 也能跑 **C1 ingest**。在 `experiments/webrtc-sfu-pilot` 下直接用：**`bash scripts/run-c1-ffmpeg-ingest.sh --local`**（彩条）、**`bash scripts/c1-sfu-stats-after-viewer.sh`**（等价 `npm run c1:diag:sfu`）。若你本机另有 nvm，路径可能是 **`$HOME/.nvm/nvm.sh`**（没有该文件就说明 **未装 nvm**，不要照抄 `/root/.nvm/…`）。**不建议**为跑试点在 ECS 上 **`apt install npm`**（版本易与项目要求不一致）；需要宿主机 `npm` 时再单独装官方 Node 20+。详见 **`docs/aliyun-ecs-pilot.md` §4.1**。
+**SSH / 自动化里 `npm: command not found`**：PoC 上 **SFU 在 Docker 里编好了**，宿主机 **不必**装 Node/npm 也能跑 **C1 ingest**。在 `experiments/webrtc-sfu-pilot` 下直接用：**`bash scripts/run-c1-ffmpeg-ingest.sh --local`**（彩条）、**`bash scripts/c1-sfu-stats-after-viewer.sh`**（等价 `npm run c1:diag:sfu`）、**`bash scripts/c1-ingest-checklist.sh`**（Ingest 侧四步：管道/进程/端口/tcpdump/硬恢复；等价 `npm run c1:diag:ingest`，见 **`docs/layer-c1-lessons-learned.md` §13**）。若你本机另有 nvm，路径可能是 **`$HOME/.nvm/nvm.sh`**（没有该文件就说明 **未装 nvm**，不要照抄 `/root/.nvm/…`）。**不建议**为跑试点在 ECS 上 **`apt install npm`**（版本易与项目要求不一致）；需要宿主机 `npm` 时再单独装官方 Node 20+。详见 **`docs/aliyun-ecs-pilot.md` §4.1**。
 
 **`git pull` 已 up to date 却没有新脚本**（如 `scripts/c1-sfu-stats-after-viewer.sh`）：说明 **远端尚未包含对应提交**，需在本机仓库 **`git push`** 后再 ECS `git pull`；脚本未到位前可用 **`docker compose logs … | grep -E 'PlainTransport stats|FFmpeg→SFU|SFU-to-browser|ingest producer getStats|consume:'`**（见 **`docs/layer-c1-lessons-learned.md` §12**）。
 
@@ -148,6 +148,7 @@ docker compose logs --tail=30
 
 **`video-bytes` 只有约 1 万且 1s/3s 几乎不涨**：多表示 **SFU 侧 ingest 没在持续收 RTP**（或端口/进程不是当前这次启动的），不是单纯「解码慢」。请 **先** 在 ECS 上看容器日志（仅观看后约 2s 会打两行）：  
 `npm run c1:diag:sfu`（等价：`bash scripts/c1-sfu-stats-after-viewer.sh`；或手写 `docker compose logs … | grep -E 'PlainTransport stats|FFmpeg→SFU|SFU-to-browser|rtpBytesReceived'`）  
+**`npm run c1:diag:ingest`**（等价：`bash scripts/c1-ingest-checklist.sh`，可选 `--tcpdump`）：Ingest 管道是否断、`ffmpeg` 是否在跑、RTP 口是否有包、卡死时的 **`stop` + `--recreate-pilot adb-loop`** 命令；见 **`docs/layer-c1-lessons-learned.md` §13**。  
 - 若 **`rtpBytesReceived` / `FFmpeg→SFU` 的 packetCount 几乎不涨**：宿主机 **`npm run c1:ingest:adb` / `c1:ingest` 是否仍在跑**、**端口是否与本次 `docker compose` 日志里的 `mediasoup RTP tuple` 一致**（容器重启后端口会变，须重跑 `run-c1`）。  
 - 若 **ingest 在涨** 但浏览器仍 `framesDecoded=0`：再试 **`MEDIASOUP_INGEST_CODEC=vp8`** + 彩条 **`npm run c1:ingest`** 验证链路；ADB ingest 目前仅 H264。
 

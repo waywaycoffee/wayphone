@@ -23,4 +23,5 @@ else
 fi
 echo "• 推流前: export MEDIASOUP_INGEST_CODEC=h264|vp8 与容器一致；INGEST_PT 以日志 ingest PT= 为准。"
 echo "• 浏览器点「仅观看」后筛 C1 统计: npm run c1:diag:sfu（见 docs/layer-c1-lessons-learned.md §12）"
+echo "• Ingest 存活/端口/tcpdump/硬恢复: npm run c1:diag:ingest（见 docs/layer-c1-lessons-learned.md §13）"
 echo "• 本脚本: npm run pilot:ingest-debug 或 bash scripts/pilot-ingest-debug.sh"

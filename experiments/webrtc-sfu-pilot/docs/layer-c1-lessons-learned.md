@@ -211,6 +211,30 @@ npm run c1:streaming:check
 - **云安全组**：入站 **UDP 40000–49999**；**`MEDIASOUP_ANNOUNCED_IP`** 为浏览器可达的 **公网 EIP**。
 - **容器重启**：ingest **RTP 端口会变**，必须 **kill 旧 ffmpeg** 后按**当次** `docker compose logs` 里的 **`mediasoup RTP tuple` / `ingest_rtcp_port`** 再 **`npm run c1:ingest`** / **`c1:ingest:adb`**。
 
-**一键命令索引**（均在试点目录）：`npm run c1:diag:sfu`、`npm run c1:diag:sfu:last`、`npm run c1:ingest:adb:short`、`npm run c1:ingest:adb:short:v`、`npm run pilot:ingest-debug`、`npm run c1:streaming:check`。
+**一键命令索引**（均在试点目录）：`npm run c1:diag:sfu`、`npm run c1:diag:sfu:last`、`npm run c1:diag:ingest`、`npm run c1:ingest:adb:short`、`npm run c1:ingest:adb:short:v`、`npm run pilot:ingest-debug`、`npm run c1:streaming:check`。
 
 **自动化「停干净 → 可选重建 pilot → 单路 ingest」**（避免双 ffmpeg、comedia 绑死旧源口）：`bash scripts/c1-ingest-safe.sh`（子命令 `stop` / `status` / `pilot-recreate` / `colorbar` / `adb` / `adb-loop`，可选 `--recreate-pilot`）；无 npm 时同上。Cursor 持久说明见 **`.cursor/rules/c1-ingest-safe.mdc`**。
+
+---
+
+## 13. Ingest 侧四步排查（可执行清单）
+
+**一键打印命令与当前状态**（须在 **`experiments/webrtc-sfu-pilot`**）：
+
+```bash
+npm run c1:diag:ingest
+# 或: bash scripts/c1-ingest-checklist.sh
+# 可选代跑 4s tcpdump: bash scripts/c1-ingest-checklist.sh --tcpdump
+```
+
+脚本会依次说明并尽量自动检查：
+
+| 步 | 做什么 | 说明 |
+|----|--------|------|
+| **①** | 看 **跑 adb ingest 的 SSH 终端** stderr | 若出现 **`ingest 管道结束: adb_exit=… ffmpeg_exit=…`** → 推流已断；**该行不在 docker logs**，由 **`ffmpeg-ingest-h264-adb-screenrecord.sh`** 打印。 |
+| **②** | **`pgrep -af ffmpeg`** | 无进程 → ingest 未起或已挂；有则核对 **`rtp://127.0.0.1:<端口>`** 是否与日志一致。 |
+| **③** | **`docker compose logs`** 里 **RTP tuple / RTCP / 手动行** | 与 **②** 端口不一致 → 可能打旧口，先 **`c1-ingest-safe.sh stop`** 再 **`adb-loop`** 或 **`--recreate-pilot`**。 |
+| **④** | **`tcpdump -ni lo udp port <RTP>`** | 脚本打印可复制的 **`timeout 4 tcpdump …`**；无包 → 本机 loopback 上无 RTP。 |
+| **⑤** | **硬恢复** | **`stop`** → **`bash scripts/c1-ingest-safe.sh --recreate-pilot adb-loop`** → 浏览器硬刷新、单次「仅观看」→ **`c1:diag:sfu:last`**。 |
+
+与 **`npm run pilot:ingest-debug`** 的关系：**`pilot:ingest-debug`** 偏 compose 与日志摘要；**`c1:diag:ingest`** 偏 **ingest 存活 / 端口对齐 / tcpdump / 恢复命令**。
