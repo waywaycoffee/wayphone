@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # C1 Ingest 侧四步排查：可打印可执行命令（在 experiments/webrtc-sfu-pilot 目录运行）。
 #   bash scripts/c1-ingest-checklist.sh
-#   bash scripts/c1-ingest-checklist.sh --tcpdump   # 若本机有权限，直接跑 4s tcpdump（需 lo 上有 RTP）
+#   bash scripts/c1-ingest-checklist.sh --tcpdump   # 若本机有权限，代跑 tcpdump（最长约 12s）
 set -euo pipefail
 REPO_DIR=$(cd "$(dirname "$0")/.." && pwd)
 cd "${REPO_DIR}"
@@ -12,7 +12,7 @@ for a in "$@"; do
     --tcpdump) RUN_TCPDUMP=1 ;;
     -h | --help)
       echo "用法: bash scripts/c1-ingest-checklist.sh [--tcpdump]"
-      echo "  --tcpdump  尝试执行 4s tcpdump（无 cap_net_raw 可能失败，失败则仅已打印命令）"
+      echo "  --tcpdump  尝试执行 tcpdump（最长约 12s；无包时多为 stdin 未出 H264，非权限）"
       exit 0
       ;;
     *)
@@ -75,13 +75,25 @@ fi
 
 if [[ -n "${RTP_FOR_DUMP}" ]]; then
   echo "④ RTP 口是否有 UDP 包（无包 = SFU 收不到媒体 / ingest 已停或打错口）"
-  _TD="timeout 4 tcpdump -ni lo udp port ${RTP_FOR_DUMP} -c 25"
+  _TD="timeout 12 tcpdump -ni lo udp port ${RTP_FOR_DUMP} -c 25"
   echo "   执行:"
   echo "     ${_TD}"
+  echo "   判读: 0 packets 常见于 ADB→FFmpeg stdin 尚未持续出 H264（screenrecord 堵/段首），FFmpeg 可能暂不往 RTP 打 UDP；对照 ingest 终端 frame= / 是否出现 ingest 管道结束。"
   if [[ "${RUN_TCPDUMP}" == 1 ]]; then
-    echo "   (--tcpdump) 正在运行…"
+    echo "   (--tcpdump) 正在运行（最长约 12s）…"
     set +e
-    eval "${_TD}" 2>&1 | sed 's/^/     /' || echo "     (tcpdump 失败: 需安装 tcpdump 或对 lo 抓包权限)"
+    set +o pipefail
+    _td_out=$(eval "${_TD}" 2>&1)
+    _td_rc=$?
+    set -o pipefail
+    echo "${_td_out}" | sed 's/^/     /'
+    if [[ "${_td_rc}" -ne 0 ]]; then
+      if [[ "${_td_rc}" -eq 124 ]]; then
+        echo "     (timeout 结束: exit 124 — 窗口内包很少或 FFmpeg 尚未发 RTP，不一定是权限问题)"
+      else
+        echo "     (tcpdump/timeout 退出码=${_td_rc} — 未安装 tcpdump、无抓包权限或参数错误)"
+      fi
+    fi
     set -e
   else
     echo "   若要本脚本代跑: bash scripts/c1-ingest-checklist.sh --tcpdump"
@@ -102,3 +114,10 @@ echo "   浏览器: 硬刷新 → 只点一次「仅观看」→ 等 ≥8s"
 echo "     bash scripts/c1-sfu-stats-after-viewer.sh --last-consume 2000"
 echo ""
 echo "（等价 npm: npm run c1:diag:ingest）"
+echo ""
+echo "⑥ comedia（adb 多段重启 ffmpeg 后易 mismatch）"
+echo "     bash scripts/c1-ingest-comedia-check.sh"
+echo "     npm run c1:check:comedia"
+echo ""
+echo "⑦ ffmpeg 目的 RTP 口是否与 pilot 日志最新 tuple 一致（防旧进程打旧口）"
+echo "     bash scripts/c1-ingest-ffmpeg-rtp-vs-pilot-log.sh"
