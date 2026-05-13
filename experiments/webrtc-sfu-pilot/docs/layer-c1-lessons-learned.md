@@ -158,13 +158,13 @@ docker compose logs --tail=80 webrtc-sfu-pilot | grep -E 'PlainTransport stats|F
 
 ---
 
-## 11. Redroid Android 9：串流分层找因（先断在哪一层）
+## 11. Redroid（Android 11 默认）：串流分层找因（先断在哪一层）
 
-换 **Android 9** 后仍要**按层验证**，避免把「掌厅 native 崩溃」与「SFU / RTP 不通」混在一起猜。
+换 **Redroid / Android 大版本** 后仍要**按层验证**，避免把「掌厅 native 崩溃」与「SFU / RTP 不通」混在一起猜。
 
 | 顺序 | 验证什么 | 通过标准 | 失败时优先怀疑 |
 |------|----------|----------|----------------|
-| **0** | 版本 | `adb shell getprop ro.build.version.sdk` → **28** | `.env` 里 `REDROID_IMAGE` 未生效、容器未重建 |
+| **0** | 版本 | `adb shell getprop ro.build.version.sdk` → 与 **`REDROID_IMAGE`** 一致（**11 → 30**） | `.env` 里 `REDROID_IMAGE` 未生效、容器未 **force-recreate** |
 | **B** | Layer B（两 Tab 摄像头） | Tab2 能看到 Tab1 画面 | `MEDIASOUP_ANNOUNCED_IP`、安全组 **UDP 40000–49999**、浏览器是否 `127.0.0.1` 转发（见 `docs/webrtc-sfu-pilot.md` §3.2） |
 | **C1 彩条** | FFmpeg→PlainTransport（无 adb） | `rtpBytesReceived` 涨、`framesDecoded>0` | 镜像未 **build**、**RTCP mux**、**run-c1 端口** 不是当次（§3–§5、§10） |
 | **C1 adb** | `screenrecord`→FFmpeg→SFU | 同上，且画面为云机内容 | `adb` 非 **device**、多台且**无** `127.0.0.1:5555` 又未 **`ANDROID_SERIAL`/`C1_ADB_SERIAL`**、`screenrecord` 断流（`c1:diagnose:adb`）、掌厅未前台则可能只是桌面 |
@@ -211,7 +211,7 @@ npm run c1:streaming:check
 - **云安全组**：入站 **UDP 40000–49999**；**`MEDIASOUP_ANNOUNCED_IP`** 为浏览器可达的 **公网 EIP**。
 - **容器重启**：ingest **RTP 端口会变**，必须 **kill 旧 ffmpeg** 后按**当次** `docker compose logs` 里的 **`mediasoup RTP tuple` / `ingest_rtcp_port`** 再 **`npm run c1:ingest`** / **`c1:ingest:adb`**。
 
-**一键命令索引**（均在试点目录）：`npm run c1:diag:sfu`、`npm run c1:diag:sfu:last`、`npm run c1:diag:ingest`、`npm run c1:ingest:adb:short`、`npm run c1:ingest:adb:short:v`、`npm run pilot:ingest-debug`、`npm run c1:streaming:check`。
+**一键命令索引**（均在试点目录）：`npm run c1:diag:sfu`、`npm run c1:diag:sfu:last`、`npm run c1:diag:ingest`、`npm run c1:check:comedia`、`npm run c1:ingest:adb:short`、`npm run c1:ingest:adb:short:v`、`npm run pilot:ingest-debug`、`npm run c1:streaming:check`。
 
 **自动化「停干净 → 可选重建 pilot → 单路 ingest」**（避免双 ffmpeg、comedia 绑死旧源口）：`bash scripts/c1-ingest-safe.sh`（子命令 `stop` / `status` / `pilot-recreate` / `colorbar` / `adb` / `adb-loop`，可选 `--recreate-pilot`）；无 npm 时同上。Cursor 持久说明见 **`.cursor/rules/c1-ingest-safe.mdc`**。
 
@@ -224,7 +224,7 @@ npm run c1:streaming:check
 ```bash
 npm run c1:diag:ingest
 # 或: bash scripts/c1-ingest-checklist.sh
-# 可选代跑 4s tcpdump: bash scripts/c1-ingest-checklist.sh --tcpdump
+# 可选代跑 tcpdump（最长约 12s）: bash scripts/c1-ingest-checklist.sh --tcpdump
 ```
 
 脚本会依次说明并尽量自动检查：
@@ -234,7 +234,63 @@ npm run c1:diag:ingest
 | **①** | 看 **跑 adb ingest 的 SSH 终端** stderr | 若出现 **`ingest 管道结束: adb_exit=… ffmpeg_exit=…`** → 推流已断；**该行不在 docker logs**，由 **`ffmpeg-ingest-h264-adb-screenrecord.sh`** 打印。 |
 | **②** | **`pgrep -af ffmpeg`** | 无进程 → ingest 未起或已挂；有则核对 **`rtp://127.0.0.1:<端口>`** 是否与日志一致。 |
 | **③** | **`docker compose logs`** 里 **RTP tuple / RTCP / 手动行** | 与 **②** 端口不一致 → 可能打旧口，先 **`c1-ingest-safe.sh stop`** 再 **`adb-loop`** 或 **`--recreate-pilot`**。 |
-| **④** | **`tcpdump -ni lo udp port <RTP>`** | 脚本打印可复制的 **`timeout 4 tcpdump …`**；无包 → 本机 loopback 上无 RTP。 |
+| **④** | **`tcpdump -ni lo udp port <RTP>`** | 脚本打印可复制的 **`timeout 12 tcpdump …`**；**0 packets** 常见于 **ADB→stdin 尚未持续出 H264**（FFmpeg 暂不往 RTP 打 UDP），不一定表示「装错 tcpdump」；对照 **①** ingest 终端 **`frame=`** / **`ingest 管道结束`**。 |
 | **⑤** | **硬恢复** | **`stop`** → **`bash scripts/c1-ingest-safe.sh --recreate-pilot adb-loop`** → 浏览器硬刷新、单次「仅观看」→ **`c1:diag:sfu:last`**。 |
 
 与 **`npm run pilot:ingest-debug`** 的关系：**`pilot:ingest-debug`** 偏 compose 与日志摘要；**`c1:diag:ingest`** 偏 **ingest 存活 / 端口对齐 / tcpdump / 恢复命令**。
+
+---
+
+## 14. comedia 与 adb-loop：避免「换 ffmpeg 源口后黑屏」
+
+**根因（PoC 默认）**：`PlainTransport` **`comedia=true`** 只在首包时学到 **`remote=127.0.0.1:<源端口>`**。**`adb-loop` + `screenrecord --time-limit`** 每段结束会再起新 **ffmpeg**，**临时源端口会变**；若 **不重建 pilot**，SFU 仍认 **旧 remote** → **`rtpBytesReceived` / `packetCount` 冻结**、再 **`仅观看`** 时 **`SFU-to-browser=0`**。
+
+**检查（ingest 在跑、已装 tcpdump）**：
+
+```bash
+npm run c1:check:comedia
+# 或: bash scripts/c1-ingest-comedia-check.sh
+# 无法判定时非零退出: bash scripts/c1-ingest-comedia-check.sh --strict
+```
+
+- **退出码 1**：日志 **`remote=`** 与 **当前发往 RTP 口的 UDP 源端口** 不一致 → 按脚本提示 **`stop` + `pilot-recreate` + 再起 adb-loop**。
+
+**避免复发（三选一或组合）**：
+
+1. **拉长单段**（减少 ffmpeg 重启次数）：`export SCREENRECORD_TIME_LIMIT=120`（或更长，视 ROM 上限）再 **`adb-loop`**。  
+2. **每段后自动重建 pilot**（PoC 最稳，**每段约数秒无 ingest**，且 **RTP 口会变**，浏览器宜硬刷新）：  
+   `export C1_ADB_LOOP_PILOT_RECREATE_PER_SEGMENT=1`  
+   再 **`bash scripts/c1-ingest-safe.sh adb-loop`**（或 **`npm run c1:safe:adb-loop`**）。实现见 **`scripts/run-c1-ingest-adb-loop.sh`**。  
+3. **以后架构**：`MEDIASOUP_INGEST_PLAIN_CONNECT=1` + FFmpeg **固定 `localport`**，与 **`connect()`** 对齐（文档另述），可摆脱「只学一次源口」对多段重启的敏感。
+
+---
+
+## 15. 2026-05-06 会话备忘（ECS：stats 误读、脚本未入库、comedia、云盘判据）
+
+本节把同日在 **阿里云 ECS** 上排 C1 / ADB ingest 时**反复出现**、且容易和「代码没更新」混淆的点记下来。
+
+### 15.1 仓库脚本与 ECS `git pull`
+
+- **`bash scripts/….sh: No such file or directory`**：多为脚本**从未 `git add` / `push`**，本机有、远端无；ECS `git pull` 不会凭空出现。
+- 已纳入仓库的辅助脚本（均在 **`experiments/webrtc-sfu-pilot/scripts/`**）：
+  - **`c1-ingest-ffmpeg-rtp-vs-pilot-log.sh`**：比对 **ffmpeg 命令行里 RTP 目的端口**（`rtp://127.0.0.1:PORT`）与 **`docker compose logs` 最近一次 `mediasoup RTP tuple`**；**退出码 1** = 打旧口或 pilot 已重建。
+  - **`c1-ingest-comedia-check.sh`**：比对 **日志里 PlainTransport `remote=127.0.0.1:源口`** 与 **`tcpdump` 抓到的、发往 RTP 口的当前 UDP 源口**；**退出码 1** = comedia 仍绑旧源口（常见于 **ffmpeg 重启、adb-loop 换段** 后未 **`pilot-recreate` / `restart webrtc-sfu-pilot`**）。依赖 **`tcpdump`**（未装则按脚本提示 **`apt-get install tcpdump`**）。
+- **`c1-sfu-stats-after-viewer.sh`** 默认 stderr 会提示：多次点「仅观看」时请加 **`--last-consume`**（不够则 **`--last-consume 2000`**），避免把**旧 `producerId` 卡死块**与**新 producer 正常块**拼成一段误判。
+
+### 15.2 `c1-sfu-stats` 默认输出为何像「又全坏了」
+
+- 默认 **`docker compose logs --tail=200` → grep → tail -n 120**，会把**多次**「仅观看」、甚至**已失效 producer** 的 Layer C1 行排在一起。
+- **判读当前这一次**：务必 **`bash scripts/c1-sfu-stats-after-viewer.sh --last-consume 2000`**（或更大 tail）；只看 **最后一次 `consume:`** 之后到日志窗口末尾的块。
+- **健康快照（ADB 或彩条）**：**新 `producerId`**；**1.5s 与 5s** 两行里 **`FFmpeg→SFU` 的 `packetCount` 明显变大**；**5s 时 `SFU-to-browser` 的 `packetCount` / `bitrate` 常已 > 0**（1.5s 仍全 0 可能是 consumer 尚未出统计，以 5s 为准）。
+
+### 15.3 「RTP 目的口对了、ffmpeg 也在跑，但 producer 冻结、bytes 还在涨」
+
+曾出现：**`pgrep` 显示 `rtp://127.0.0.1:<当前 tuple 端口>` 正确**，但 **`FFmpeg→SFU packetCount` / `rtpBytesReceived` 长期不变**，**`PlainTransport bytesReceived` 仍涨**，**`SFU-to-browser=0`**；**`remote=` 长时间停在某一旧源口**（如某次 `55698`）。
+
+- **含义**：不一定是「FFmpeg 打到错的 RTP **目的**口」；更像是 **comedia 只认旧 UDP 源口**（§14），**当前 ffmpeg 已从新临时源口发包**，RTP 层不再计入该 producer，浏览器侧也无有效下行。
+- **处理**：**`bash scripts/c1-ingest-safe.sh stop`** → **`docker compose restart webrtc-sfu-pilot`**（或 **`c1-ingest-safe.sh pilot-recreate`**）→ 按新日志 **`run-c1-ffmpeg-ingest.sh --local`** → 浏览器**硬刷新**、**单次**「仅观看」→ 再 **`--last-consume`** 采样。可选先跑 **`c1-ingest-comedia-check.sh`** 确认是否 **不匹配**。
+
+### 15.4 多台 `adb devices` 与云盘「业务跑通」判据
+
+- **`adb: more than one device/emulator`**：在试点目录 **`eval "$(bash scripts/c1-default-android-serial.sh)"`**（或 **`export ANDROID_SERIAL=127.0.0.1:5555`** / **`adb -s …`**），与 **§11** 表一致。
+- **日志里 `appData` 仍为 `plain-ingest-test`**：只表示 **C1 PlainTransport ingest** 这一路，**不能**单独证明画面是 **移动云盘**；须结合 **推流时前台 Activity**（如 **`dumpsys activity` / `mResumedActivity`**）与 **浏览器里是否看到云盘 UI** 才敢说「云盘业务跑通」。统计上 **`FFmpeg→SFU` 与 `SFU-to-browser` 同时有量** 只证明 **ADB→SFU→浏览器管道** 在该时刻可用。
