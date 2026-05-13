@@ -13,6 +13,7 @@
 #   LOG_DIALOG_WAIT_SEC         最长等待秒数，默认 15
 #   LOG_DIALOG_POLL_SEC         轮询间隔，默认 0.2
 #   LOG_DIALOG_FALLBACK_X/Y     解析失败时回退 tap（默认 360/1042，对应 720x1280 实测）
+#   UIAUTOMATOR_DUMP_XML        uiautomator dump 设备端路径（Redroid 上 /sdcard 常不可写，默认 /data/local/tmp/…）
 #   ADB_BIN                     默认 adb
 set -u
 
@@ -21,14 +22,15 @@ WAIT_SEC=${LOG_DIALOG_WAIT_SEC:-15}
 POLL_SEC=${LOG_DIALOG_POLL_SEC:-0.2}
 FB_X=${LOG_DIALOG_FALLBACK_X:-360}
 FB_Y=${LOG_DIALOG_FALLBACK_Y:-1042}
-REMOTE_XML=/sdcard/w_log_dialog_dump.xml
+# Redroid：/sdcard 下 dump 可能失败；优先可写 tmp（可被 UIAUTOMATOR_DUMP_XML 覆盖）
+REMOTE_XML="${UIAUTOMATOR_DUMP_XML:-/data/local/tmp/w_log_dialog_dump.xml}"
 START_ZHANGTING=0
 
 for arg in "$@"; do
   case "${arg}" in
     --start-zhangting) START_ZHANGTING=1 ;;
     -h|--help)
-      sed -n '2,25p' "$0" | sed 's/^# \?//'
+      sed -n '2,28p' "$0" | sed 's/^# \?//'
       exit 0
       ;;
   esac
@@ -70,12 +72,16 @@ _parse_bounds_center() {
 }
 
 _try_tap_from_dump() {
-  if ! "${ADB_BIN}" "${ADB_FLAGS[@]}" shell uiautomator dump "${REMOTE_XML}" 2>/dev/null; then
-    return 1
+  local pulled=0
+  "${ADB_BIN}" "${ADB_FLAGS[@]}" shell mkdir -p /data/local/tmp 2>/dev/null || true
+  if "${ADB_BIN}" "${ADB_FLAGS[@]}" shell uiautomator dump "${REMOTE_XML}" 2>/dev/null \
+    && "${ADB_BIN}" "${ADB_FLAGS[@]}" pull "${REMOTE_XML}" "${_tmp}" 2>/dev/null; then
+    pulled=1
+  elif "${ADB_BIN}" "${ADB_FLAGS[@]}" shell uiautomator dump 2>/dev/null \
+    && "${ADB_BIN}" "${ADB_FLAGS[@]}" pull /sdcard/window_dump.xml "${_tmp}" 2>/dev/null; then
+    pulled=1
   fi
-  if ! "${ADB_BIN}" "${ADB_FLAGS[@]}" pull "${REMOTE_XML}" "${_tmp}" 2>/dev/null; then
-    return 1
-  fi
+  [[ "${pulled}" == 1 ]] || return 1
   if ! grep -q 'log_access_dialog_allow_button' "${_tmp}"; then
     return 1
   fi
