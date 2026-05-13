@@ -5,7 +5,7 @@
   <meta http-equiv="Cache-Control" content="no-store" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <!-- 占位：npm run build:client 时由 scripts/sync-pilot-version.cjs 替换为 package.json「pilotVersion」 -->
-  <meta name="pilot-frontend-version" content="pilot-00000000sync" />
+  <meta name="pilot-frontend-version" content="pilot-20260506c2" />
   <title>WebRTC SFU 试点 — Layer B</title>
   <style>
     body { font-family: system-ui, sans-serif; max-width: 56rem; margin: 0 auto; padding: 1rem; background: #0f1115; color: #e6e6e6; line-height: 1.45; }
@@ -20,6 +20,13 @@
     .videos { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-top: 0.75rem; }
     @media (max-width: 640px) { .videos { grid-template-columns: 1fr; } }
     video { width: 100%; max-height: 280px; background: #111827; border-radius: 8px; object-fit: contain; }
+    .video-shell { position: relative; width: 100%; display: block; }
+    .video-shell video { width: 100%; display: block; }
+    #c2TapLayer {
+      display: none; position: absolute; inset: 0; z-index: 2; cursor: crosshair;
+      border-radius: 8px; background: transparent;
+    }
+    #c2TapLayer.on { display: block; }
     #log {
       margin-top: 0.75rem; min-height: 8rem; max-height: 14rem; overflow: auto;
       background: #020617; color: #86efac; padding: 0.6rem 0.75rem; border-radius: 8px;
@@ -30,7 +37,7 @@
 </head>
 <body>
   <h1>WebRTC SFU 试点（Layer B：信令 + mediasoup-client）</h1>
-  <p class="note" style="color:#fcd34d">页面版本 pilot-00000000sync（构建时由 package.json 写入）；ingest：多路 video 时优先订阅 plain-ingest-test</p>
+  <p class="note" style="color:#fcd34d">页面版本 pilot-20260506c2（构建时由 package.json 写入）；ingest：多路 video 时优先订阅 plain-ingest-test</p>
   <p class="note">
     本页通过 WebSocket 与 mediasoup 完成 <strong>摄像头 → SFU → 另一浏览器 Tab</strong> 的最小闭环。
     可选 Layer C1：服务端 <code>MEDIASOUP_INGEST_TEST=1</code> + FFmpeg 时，可<strong>只「仅观看」</strong>收测试流（见 README）。不包含 Redroid 屏幕进 SFU（仍在 Layer C）。需先执行 <code>npm install</code> 与 <code>npm run build:client</code> 生成
@@ -40,6 +47,13 @@
     <button type="button" id="btnPublish">发布摄像头（连接 SFU）</button>
     <button type="button" id="btnWatch">仅观看（订阅已存在的发布）</button>
   </div>
+  <div class="row" id="c2Row" style="display:none">
+    <label class="note" style="display:flex;align-items:center;gap:0.5rem;cursor:pointer">
+      <input type="checkbox" id="c2TapToggle" />
+      <span>在远端画面上点击回注（Layer C2，adb tap）</span>
+    </label>
+    <input type="password" id="c2TokenInput" autocomplete="off" placeholder="PILOT_C2_TOKEN（若服务端已设置）" style="min-width:12rem;padding:0.35rem 0.5rem;border-radius:6px;border:1px solid #374151;background:#111827;color:#e5e7eb;font-size:0.85rem" />
+  </div>
   <div class="videos">
     <div>
       <div class="note">本地预览（发布端）</div>
@@ -47,11 +61,14 @@
     </div>
     <div>
       <div class="note">远端（SFU 转发）</div>
-      <!-- 远端不要用 autoplay：会与脚本里 play() 争抢导致 AbortError / 黑屏 -->
-      <video id="remoteVideo" playsinline muted controls></video>
+      <div class="video-shell">
+        <!-- 远端不要用 autoplay：会与脚本里 play() 争抢导致 AbortError / 黑屏 -->
+        <video id="remoteVideo" playsinline muted controls></video>
+        <div id="c2TapLayer" title="触控回注：点击即 adb tap"></div>
+      </div>
     </div>
   </div>
   <div id="log"></div>
-  <script type="module" src="/app.mjs?v=pilot-00000000sync"></script>
+  <script type="module" src="/app.mjs?v=pilot-20260506c2"></script>
 </body>
 </html>

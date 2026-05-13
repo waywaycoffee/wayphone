@@ -2,7 +2,7 @@
 
 **Layer A + B**：mediasoup **Worker / Router** + **WebSocket 信令** + 浏览器 **`mediasoup-client`**，实现 **摄像头 → SFU → 另一 Tab / 另一台浏览器** 的最小闭环。
 
-**不是**：Redroid / 安卓画面采集、触控回注、商用房间与鉴权（**Layer C** 见仓库根目录 **`docs/layer-c-roadmap.md`**）。
+**不是**：Redroid 镜像编排、商用房间与鉴权（**Layer C** 见 **`docs/layer-c-roadmap.md`**）。**Layer C2（触控）PoC**：同进程提供 **`/api/c2/tap`**（见下文 §C2），生产前宜拆独立服务（路线图已记）。
 
 ## 本地运行
 
@@ -17,6 +17,15 @@ npm start
 
 1. **Tab 1**：点「发布摄像头」，允许摄像头。  
 2. **Tab 2**：点「仅观看」，应出现经 SFU 转发的远端画面。
+
+## Layer C2 — 触控回注 PoC（`adb shell input tap`）
+
+- **镜像**：`Dockerfile` 已装 **`android-tools-adb`**；`docker-compose.yml` 默认 **`PILOT_C2_ENABLED=0`**（关闭）。与 C1 一样建议 **`network_mode: host`**，容器内 `adb` 访问 **`127.0.0.1:5555`** 与宿主机 Redroid 一致。
+- **启用**：`.env` 或 compose 环境变量：  
+  **`PILOT_C2_ENABLED=1`**，可选 **`C2_ADB_SERIAL=127.0.0.1:5555`**（多台设备时与 `c1-default-android-serial.sh` 一致）、**`C2_DEVICE_WIDTH` / `C2_DEVICE_HEIGHT`**（与云机逻辑分辨率一致，默认 720×1280）、**`PILOT_C2_MAX_PER_MIN`**（每 IP 限流，默认 120）、**`PILOT_C2_TOKEN`**（若设置则请求头须带 **`Authorization: Bearer <token>`**；**公网必配**）。
+- **API**：`GET /api/c2/status`、`GET /api/c2/config`、`POST /api/c2/tap`，body JSON **`{ vx, vy, vw, vh }`** 为**视频帧内像素**及**视频宽高**（页面在「远端」画面上点击时由前端按 `object-fit: contain` 映射后发送）。
+- **页面**：勾选 **「在远端画面上点击回注（C2）」** 后，在远端画面上点击即可（覆盖层避免点到 `<video controls>`）。
+- **重建**：改 `server.cjs` / `c2-adb-api.cjs` 后须 **`docker compose build --no-cache`**（见 **`docs/layer-c1-lessons-learned.md` §3**）。
 
 **局域网其它设备**访问时，在服务端进程环境设置 **`MEDIASOUP_ANNOUNCED_IP=<服务器局域网IP>`**，否则 WebRTC 可能无法连通。
 
@@ -51,7 +60,7 @@ docker compose config | grep -E 'MEDIASOUP_|PILOT_VERSION'
 docker compose build --no-cache && docker compose up -d --force-recreate
 ```
 
-**SSH / 自动化里 `npm: command not found`**：PoC 上 **SFU 在 Docker 里编好了**，宿主机 **不必**装 Node/npm 也能跑 **C1 ingest**。在 `experiments/webrtc-sfu-pilot` 下直接用：**`bash scripts/run-c1-ffmpeg-ingest.sh --local`**（彩条）、**`bash scripts/c1-sfu-stats-after-viewer.sh`**（等价 `npm run c1:diag:sfu`）、**`bash scripts/c1-ingest-checklist.sh`**（Ingest 侧四步：管道/进程/端口/tcpdump/硬恢复；等价 `npm run c1:diag:ingest`，见 **`docs/layer-c1-lessons-learned.md` §13**）。若你本机另有 nvm，路径可能是 **`$HOME/.nvm/nvm.sh`**（没有该文件就说明 **未装 nvm**，不要照抄 `/root/.nvm/…`）。**不建议**为跑试点在 ECS 上 **`apt install npm`**（版本易与项目要求不一致）；需要宿主机 `npm` 时再单独装官方 Node 20+。详见 **`docs/aliyun-ecs-pilot.md` §4.1**。
+**SSH / 自动化里 `npm: command not found`**：PoC 上 **SFU 在 Docker 里编好了**，宿主机 **不必**装 Node/npm 也能跑 **C1 ingest**。在 `experiments/webrtc-sfu-pilot` 下直接用：**`bash scripts/run-c1-ffmpeg-ingest.sh --local`**（彩条）、**`bash scripts/c1-sfu-stats-after-viewer.sh`**（等价 `npm run c1:diag:sfu`）、**`bash scripts/c1-ingest-checklist.sh`**（Ingest 四步；等价 `npm run c1:diag:ingest`，见 **§13**）、**`bash scripts/c1-ingest-comedia-check.sh`**（comedia 源口是否与当前 RTP 一致；等价 `npm run c1:check:comedia`，见 **§14**）。若你本机另有 nvm，路径可能是 **`$HOME/.nvm/nvm.sh`**（没有该文件就说明 **未装 nvm**，不要照抄 `/root/.nvm/…`）。**不建议**为跑试点在 ECS 上 **`apt install npm`**（版本易与项目要求不一致）；需要宿主机 `npm` 时再单独装官方 Node 20+。详见 **`docs/aliyun-ecs-pilot.md` §4.1**。
 
 **`git pull` 已 up to date 却没有新脚本**（如 `scripts/c1-sfu-stats-after-viewer.sh`）：说明 **远端尚未包含对应提交**，需在本机仓库 **`git push`** 后再 ECS `git pull`；脚本未到位前可用 **`docker compose logs … | grep -E 'PlainTransport stats|FFmpeg→SFU|SFU-to-browser|ingest producer getStats|consume:'`**（见 **`docs/layer-c1-lessons-learned.md` §12**）。
 
@@ -149,6 +158,7 @@ docker compose logs --tail=30
 **`video-bytes` 只有约 1 万且 1s/3s 几乎不涨**：多表示 **SFU 侧 ingest 没在持续收 RTP**（或端口/进程不是当前这次启动的），不是单纯「解码慢」。请 **先** 在 ECS 上看容器日志（仅观看后约 2s 会打两行）：  
 `npm run c1:diag:sfu`（等价：`bash scripts/c1-sfu-stats-after-viewer.sh`；或手写 `docker compose logs … | grep -E 'PlainTransport stats|FFmpeg→SFU|SFU-to-browser|rtpBytesReceived'`）  
 **`npm run c1:diag:ingest`**（等价：`bash scripts/c1-ingest-checklist.sh`，可选 `--tcpdump`）：Ingest 管道是否断、`ffmpeg` 是否在跑、RTP 口是否有包、卡死时的 **`stop` + `--recreate-pilot adb-loop`** 命令；见 **`docs/layer-c1-lessons-learned.md` §13**。  
+**`npm run c1:check:comedia`**（等价：`bash scripts/c1-ingest-comedia-check.sh`）：比对 **PlainTransport `remote=`** 与 **当前 RTP 源端口**；见 **§14**（`adb-loop` 多段 + comedia）。  
 - 若 **`rtpBytesReceived` / `FFmpeg→SFU` 的 packetCount 几乎不涨**：宿主机 **`npm run c1:ingest:adb` / `c1:ingest` 是否仍在跑**、**端口是否与本次 `docker compose` 日志里的 `mediasoup RTP tuple` 一致**（容器重启后端口会变，须重跑 `run-c1`）。  
 - 若 **ingest 在涨** 但浏览器仍 `framesDecoded=0`：再试 **`MEDIASOUP_INGEST_CODEC=vp8`** + 彩条 **`npm run c1:ingest`** 验证链路；ADB ingest 目前仅 H264。
 
@@ -160,7 +170,7 @@ docker compose logs --tail=30
 
 **完整总结（现象表、根因、清单、验证命令）见：** [`docs/layer-c1-lessons-learned.md`](docs/layer-c1-lessons-learned.md)。
 
-**Redroid 已切 Android 9 后的串流找因**：按 **Layer B → C1 彩条 → C1 adb** 分层（避免与掌厅 native 问题混淆），见 **`docs/layer-c1-lessons-learned.md` §11**。在试点目录执行 **`npm run c1:streaming:check`**（多设备时自动 **`127.0.0.1:5555`**，除非改 **`C1_ADB_SERIAL` / `ANDROID_SERIAL`**）可汇总版本、adb/ffmpeg 前置与 ingest 日志片段。
+**Redroid（默认 Android 11）上的串流找因**：按 **Layer B → C1 彩条 → C1 adb** 分层（避免与掌厅 native 问题混淆），见 **`docs/layer-c1-lessons-learned.md` §11**。在试点目录执行 **`npm run c1:streaming:check`**（多设备时自动 **`127.0.0.1:5555`**，除非改 **`C1_ADB_SERIAL` / `ANDROID_SERIAL`**）可汇总版本、adb/ffmpeg 前置与 ingest 日志片段。
 
 ### 公网 HTTPS 一条链接（可发摄像头）
 

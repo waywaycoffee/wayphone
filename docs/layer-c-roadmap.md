@@ -86,6 +86,8 @@ docker compose logs -f --tail=40
 
 **验收**：延迟可接受、坐标与分辨率映射正确（含横竖屏/DPI）。
 
+**PoC 实现（本仓库）**：`experiments/webrtc-sfu-pilot` 内在 **`PILOT_C2_ENABLED=1`** 时提供 **`POST /api/c2/tap`**（镜像含 `adb`）；详见该目录 **`README.md` §「Layer C2」**。生产前将触控 API **拆独立服务**（见上表「前期与后期」）。
+
 **前期（测试 / PoC）与后期（生产）——架构备忘**
 
 | 阶段 | 建议 | 说明 |

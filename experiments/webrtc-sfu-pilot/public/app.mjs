@@ -10,6 +10,94 @@ function readPilotFrontendVersion() {
 const logEl = document.getElementById('log');
 const localVideo = document.getElementById('localVideo');
 const remoteVideo = document.getElementById('remoteVideo');
+const c2Row = document.getElementById('c2Row');
+const c2TapToggle = document.getElementById('c2TapToggle');
+const c2TapLayer = document.getElementById('c2TapLayer');
+const c2TokenInput = document.getElementById('c2TokenInput');
+
+/** 将点击映射到 video 帧内像素（object-fit: contain 留边） */
+function videoPointFromEvent(ev, videoEl) {
+  const r = videoEl.getBoundingClientRect();
+  const iw = videoEl.videoWidth;
+  const ih = videoEl.videoHeight;
+  if (!iw || !ih) return null;
+  const scale = Math.min(r.width / iw, r.height / ih);
+  const dispW = iw * scale;
+  const dispH = ih * scale;
+  const left = r.left + (r.width - dispW) / 2;
+  const top = r.top + (r.height - dispH) / 2;
+  const vx = (ev.clientX - left) / scale;
+  const vy = (ev.clientY - top) / scale;
+  if (vx < -0.5 || vy < -0.5 || vx > iw + 0.5 || vy > ih + 0.5) return null;
+  return {
+    vx: Math.max(0, Math.min(iw - 1, vx)),
+    vy: Math.max(0, Math.min(ih - 1, vy)),
+    vw: iw,
+    vh: ih,
+  };
+}
+
+async function refreshC2Ui() {
+  if (!c2Row || !c2TapToggle || !c2TapLayer) return;
+  try {
+    const r = await fetch('/api/c2/status', { cache: 'no-store' });
+    const j = await r.json();
+    if (!j.ok) return;
+    if (j.enabled) {
+      c2Row.style.display = 'flex';
+      c2Row.style.flexWrap = 'wrap';
+      c2Row.style.alignItems = 'center';
+      c2Row.style.gap = '0.75rem';
+      if (c2TokenInput) {
+        c2TokenInput.style.display = j.authRequired ? '' : 'none';
+      }
+    } else {
+      c2Row.style.display = 'none';
+      c2TapToggle.checked = false;
+      c2TapLayer.classList.remove('on');
+    }
+  } catch {
+    /* 离线或旧镜像无 /api/c2 */
+  }
+}
+
+if (c2TapToggle && c2TapLayer) {
+  c2TapToggle.addEventListener('change', () => {
+    if (c2TapToggle.checked) {
+      c2TapLayer.classList.add('on');
+      log('C2: 已开启点击回注（点远端画面上方透明层）');
+    } else {
+      c2TapLayer.classList.remove('on');
+      log('C2: 已关闭点击回注');
+    }
+  });
+
+  c2TapLayer.addEventListener('click', async (ev) => {
+    ev.preventDefault();
+    ev.stopPropagation();
+    if (!c2TapToggle.checked) return;
+    const pt = videoPointFromEvent(ev, remoteVideo);
+    if (!pt) {
+      log('C2: 未命中视频画面区域或无视频尺寸（等 canplay 后再点）');
+      return;
+    }
+    const headers = { 'Content-Type': 'application/json' };
+    const tok = c2TokenInput ? c2TokenInput.value.trim() : '';
+    if (tok) headers.Authorization = `Bearer ${tok}`;
+    try {
+      const r = await fetch('/api/c2/tap', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(pt),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) log(`C2 tap 失败 ${r.status}: ${j.error || j.message || r.statusText}`);
+      else log(`C2 tap OK → 设备像素约 (${j.x},${j.y})`);
+    } catch (e) {
+      log(`C2 tap 请求异常: ${e.message}`);
+    }
+  });
+}
 
 function log(line) {
   logEl.textContent += `${line}\n`;
@@ -449,6 +537,7 @@ function connectWs() {
       })
       .catch((e) => log(`__pilot_version 拉取失败: ${e.message}`));
     attachWsHandlers();
+    void refreshC2Ui();
   });
   ws.addEventListener('close', () => {
     log('WebSocket 断开');

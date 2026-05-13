@@ -5,7 +5,7 @@ ARG NODE_IMAGE=node:20-bookworm
 FROM ${NODE_IMAGE}
 
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends python3 make g++ \
+  && apt-get install -y --no-install-recommends python3 make g++ android-tools-adb \
   && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -13,6 +13,7 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN npm install --no-audit --no-fund
 
+COPY c2-adb-api.cjs ./
 COPY server.cjs ./
 COPY client ./client
 COPY public ./public

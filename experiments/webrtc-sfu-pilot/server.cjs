@@ -19,6 +19,7 @@ const express = require('express');
 const WebSocket = require('ws');
 const mediasoup = require('mediasoup');
 const pilotPkg = require('./package.json');
+const { registerC2Routes, c2Enabled } = require('./c2-adb-api.cjs');
 
 const PORT = Number(process.env.PORT || 3000);
 /** 0.0.0.0 = all IPv4 interfaces (explicit; avoids confusion with logs / some host setups). */
@@ -374,6 +375,7 @@ async function main() {
     res.setHeader('Cache-Control', 'no-store');
     res.json({ ok: true, pilotVersion: PILOT_VERSION });
   });
+  registerC2Routes(app);
   app.use(
     express.static(path.join(__dirname, 'public'), {
       etag: false,
@@ -681,6 +683,19 @@ async function main() {
           'Layer C1: MEDIASOUP_INGEST_TEST=1 but ingest did NOT start (see error above). FFmpeg will not work until fixed.',
         );
       }
+    }
+    if (c2Enabled()) {
+      console.log(
+        'Layer C2: PILOT_C2_ENABLED=1 — POST /api/c2/tap（adb）；C2_ADB_SERIAL=',
+        process.env.C2_ADB_SERIAL || process.env.ANDROID_SERIAL || '127.0.0.1:5555',
+        '；设备逻辑分辨率 C2_DEVICE_WIDTH x C2_DEVICE_HEIGHT =',
+        process.env.C2_DEVICE_WIDTH || '720',
+        'x',
+        process.env.C2_DEVICE_HEIGHT || '1280',
+        '。公网务必配 PILOT_C2_TOKEN。',
+      );
+    } else {
+      console.log('Layer C2: 未启用（设 PILOT_C2_ENABLED=1 且镜像含 adb，见 README §C2）。');
     }
     console.log('Press Ctrl+C to exit.');
   });
