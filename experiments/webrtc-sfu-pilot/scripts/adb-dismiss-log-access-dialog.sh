@@ -14,6 +14,7 @@
 #   LOG_DIALOG_POLL_SEC         轮询间隔，默认 0.2
 #   LOG_DIALOG_FALLBACK_X/Y     解析失败时回退 tap（默认 360/1042，对应 720x1280 实测）
 #   UIAUTOMATOR_DUMP_XML        uiautomator dump 设备端路径（Redroid 上 /sdcard 常不可写，默认 /data/local/tmp/…）
+#   LOG_DIALOG_DEBUG=1        超时退出前打印一次「uiautomator dump」原始输出（排障）
 #   ADB_BIN                     默认 adb
 set -u
 
@@ -30,7 +31,7 @@ for arg in "$@"; do
   case "${arg}" in
     --start-zhangting) START_ZHANGTING=1 ;;
     -h|--help)
-      sed -n '2,28p' "$0" | sed 's/^# \?//'
+      sed -n '2,31p' "$0" | sed 's/^# \?//'
       exit 0
       ;;
   esac
@@ -71,17 +72,46 @@ _parse_bounds_center() {
   echo "${cx} ${cy}"
 }
 
+# 把设备上的 XML 拉到宿主机 _tmp；成功则文件非空且像 UI dump
+_fetch_xml_from_device_path() {
+  local p="$1"
+  : >"${_tmp}"
+  "${ADB_BIN}" "${ADB_FLAGS[@]}" exec-out shell cat "${p}" >"${_tmp}" 2>/dev/null || return 1
+  [[ -s "${_tmp}" ]] || return 1
+  head -c 240 "${_tmp}" | grep -q '<' || return 1
+  return 0
+}
+
 _try_tap_from_dump() {
-  local pulled=0
+  local dump_out path
   "${ADB_BIN}" "${ADB_FLAGS[@]}" shell mkdir -p /data/local/tmp 2>/dev/null || true
-  if "${ADB_BIN}" "${ADB_FLAGS[@]}" shell uiautomator dump "${REMOTE_XML}" 2>/dev/null \
-    && "${ADB_BIN}" "${ADB_FLAGS[@]}" pull "${REMOTE_XML}" "${_tmp}" 2>/dev/null; then
-    pulled=1
-  elif "${ADB_BIN}" "${ADB_FLAGS[@]}" shell uiautomator dump 2>/dev/null \
-    && "${ADB_BIN}" "${ADB_FLAGS[@]}" pull /sdcard/window_dump.xml "${_tmp}" 2>/dev/null; then
-    pulled=1
+
+  # 1) 显式路径（与 REMOTE_XML 一致）
+  "${ADB_BIN}" "${ADB_FLAGS[@]}" shell uiautomator dump "${REMOTE_XML}" >/dev/null 2>&1 || true
+  if _fetch_xml_from_device_path "${REMOTE_XML}"; then
+    :
+  else
+    # 2) 无参 dump，从输出解析「dumped to: …xml」（各 ROM 文案略有差异）
+    dump_out=$("${ADB_BIN}" "${ADB_FLAGS[@]}" shell uiautomator dump 2>&1) || dump_out=""
+    path=$(
+      echo "${dump_out}" | tr -d '\r' | sed -n 's/.*[Dd]umped to:[[:space:]]*\([^[:space:]]*\.xml\).*/\1/p' | tail -n 1
+    )
+    if [[ -z "${path}" ]]; then
+      path=$(echo "${dump_out}" | tr -d '\r' | grep -oE '/[A-Za-z0-9_./-]+\.xml' | tail -n 1)
+    fi
+    if [[ -n "${path}" ]] && _fetch_xml_from_device_path "${path}"; then
+      :
+    else
+      # 3) 常见默认文件名（先 dump 再 cat）
+      "${ADB_BIN}" "${ADB_FLAGS[@]}" shell uiautomator dump >/dev/null 2>&1 || true
+      if ! _fetch_xml_from_device_path /sdcard/window_dump.xml; then
+        if ! _fetch_xml_from_device_path /storage/emulated/0/window_dump.xml; then
+          return 1
+        fi
+      fi
+    fi
   fi
-  [[ "${pulled}" == 1 ]] || return 1
+
   if ! grep -q 'log_access_dialog_allow_button' "${_tmp}"; then
     return 1
   fi
@@ -112,4 +142,8 @@ while [[ "$(date +%s)" -lt "${_end}" ]]; do
 done
 
 echo "$(date -Is) [adb-dismiss-log-dialog] 在 ${WAIT_SEC}s 内未发现日志访问授权框（若应用未请求则属正常）" >&2
+if [[ "${LOG_DIALOG_DEBUG:-0}" == "1" ]]; then
+  echo "$(date -Is) [adb-dismiss-log-dialog] LOG_DIALOG_DEBUG: uiautomator dump 输出如下 —" >&2
+  "${ADB_BIN}" "${ADB_FLAGS[@]}" shell uiautomator dump 2>&1 | tail -n 8 >&2 || true
+fi
 exit 0
