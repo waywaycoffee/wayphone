@@ -31,6 +31,8 @@
     "c1:safe:colorbar": "bash scripts/c1-ingest-safe.sh colorbar",
     "c1:safe:adb": "bash scripts/c1-ingest-safe.sh adb",
     "c2:smoke": "bash scripts/c2-smoke.sh",
+    "c1:yundian:push+c2": "bash scripts/c1-restart-yundian-push-and-c2-smoke.sh",
+    "c1:yundian:full": "PILOT_UP=1 bash scripts/c1-restart-yundian-push-and-c2-smoke.sh",
     "c1:ingest:adb:short": "env SCREENRECORD_TIME_LIMIT=20 C1_INGEST_SOURCE=adb bash scripts/run-c1-ffmpeg-ingest.sh --local",
     "c1:ingest:adb:short:v": "env SCREENRECORD_TIME_LIMIT=20 ADB_SCREENRECORD_STDERR=/dev/stderr FFMPEG_LOGLEVEL=info C1_INGEST_SOURCE=adb bash scripts/run-c1-ffmpeg-ingest.sh --local"
   },
