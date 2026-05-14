@@ -55,6 +55,7 @@ async function refreshC2Ui() {
       c2Row.style.display = 'none';
       c2TapToggle.checked = false;
       c2TapLayer.classList.remove('on');
+      if (remoteVideo) remoteVideo.style.pointerEvents = '';
     }
   } catch (e) {
     log(
@@ -67,9 +68,14 @@ if (c2TapToggle && c2TapLayer) {
   c2TapToggle.addEventListener('change', () => {
     if (c2TapToggle.checked) {
       c2TapLayer.classList.add('on');
-      log('C2: 已开启回注（在远端画面上方透明层按下鼠标或手指；须先有视频尺寸）');
+      if (remoteVideo) {
+        remoteVideo.controls = false;
+        remoteVideo.style.pointerEvents = 'none';
+      }
+      log('C2: 已开启回注 — 在右侧远端画面上按鼠标左键或手指单点（须先有视频分辨率）');
     } else {
       c2TapLayer.classList.remove('on');
+      if (remoteVideo) remoteVideo.style.pointerEvents = '';
       log('C2: 已关闭点击回注');
     }
   });
