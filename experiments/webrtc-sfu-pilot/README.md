@@ -25,6 +25,7 @@ npm start
   **`PILOT_C2_ENABLED=1`**，可选 **`C2_ADB_SERIAL=127.0.0.1:5555`**（多台设备时与 `c1-default-android-serial.sh` 一致）、**`C2_DEVICE_WIDTH` / `C2_DEVICE_HEIGHT`**（与云机逻辑分辨率一致，默认 720×1280）、**`PILOT_C2_MAX_PER_MIN`**（每 IP 限流，默认 120）、**`PILOT_C2_TOKEN`**（若设置则请求头须带 **`Authorization: Bearer <token>`**；**公网必配**）。
 - **API**：`GET /api/c2/status`、`GET /api/c2/config`、`POST /api/c2/tap`，body JSON **`{ vx, vy, vw, vh }`** 为**视频帧内像素**及**视频宽高**（页面在「远端」画面上点击时由前端按 `object-fit: contain` 映射后发送）。
 - **页面**：勾选 **「在远端画面上点击回注（C2）」** 后，在远端画面上点击即可（覆盖层避免点到 `<video controls>`）。
+- **排障（点屏无反应）**：宿主机试点目录执行 **`bash scripts/c2-smoke.sh`**（或 **`npm run c2:smoke`**）：应看到 **`/api/c2/status` 里 `enabled:true`**、容器内 **`adb devices`** 有 **`127.0.0.1:5555 device`**、**`POST /api/c2/tap` 返回 `ok:true`**。若 **`no adb in container`** → **`docker compose build --no-cache`**；若 **403 c2_disabled** → `.env` 设 **`PILOT_C2_ENABLED=1`** 并 **`compose up --force-recreate`**；若 **502 adb_failed** → 看返回 `message`、并确认 **Redroid 已起**、**`C2_ADB_SERIAL`** 正确。页面上须 **先有远端视频尺寸** 再点（否则日志会提示无 `videoWidth`）；已改为 **`pointerdown` + `touch-action:none`** 便于触控。
 - **重建**：改 `server.cjs` / `c2-adb-api.cjs` 后须 **`docker compose build --no-cache`**（见 **`docs/layer-c1-lessons-learned.md` §3**）。
 
 **局域网其它设备**访问时，在服务端进程环境设置 **`MEDIASOUP_ANNOUNCED_IP=<服务器局域网IP>`**，否则 WebRTC 可能无法连通。

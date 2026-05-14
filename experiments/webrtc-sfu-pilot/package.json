@@ -2,7 +2,7 @@
   "name": "webrtc-sfu-pilot",
   "private": true,
   "description": "mediasoup SFU pilot: Layer A+B + optional C1 PlainTransport ingest (FFmpeg)",
-  "pilotVersion": "pilot-20260514c1diag",
+  "pilotVersion": "pilot-20260515c2fix",
   "license": "UNLICENSED",
   "engines": {
     "node": ">=20"
@@ -30,7 +30,7 @@
     "c1:safe:pilot-recreate": "bash scripts/c1-ingest-safe.sh pilot-recreate",
     "c1:safe:colorbar": "bash scripts/c1-ingest-safe.sh colorbar",
     "c1:safe:adb": "bash scripts/c1-ingest-safe.sh adb",
-    "c1:safe:adb-loop": "bash scripts/c1-ingest-safe.sh adb-loop",
+    "c2:smoke": "bash scripts/c2-smoke.sh",
     "c1:ingest:adb:short": "env SCREENRECORD_TIME_LIMIT=20 C1_INGEST_SOURCE=adb bash scripts/run-c1-ffmpeg-ingest.sh --local",
     "c1:ingest:adb:short:v": "env SCREENRECORD_TIME_LIMIT=20 ADB_SCREENRECORD_STDERR=/dev/stderr FFMPEG_LOGLEVEL=info C1_INGEST_SOURCE=adb bash scripts/run-c1-ffmpeg-ingest.sh --local"
   },

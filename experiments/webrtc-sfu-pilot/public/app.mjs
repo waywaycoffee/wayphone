@@ -56,8 +56,10 @@ async function refreshC2Ui() {
       c2TapToggle.checked = false;
       c2TapLayer.classList.remove('on');
     }
-  } catch {
-    /* 离线或旧镜像无 /api/c2 */
+  } catch (e) {
+    log(
+      `C2: 无法 GET /api/c2/status（${e.message}）— 确认容器已 build 含 c2-adb-api、.env 里 PILOT_C2_ENABLED=1 且已 compose recreate`,
+    );
   }
 }
 
@@ -65,20 +67,26 @@ if (c2TapToggle && c2TapLayer) {
   c2TapToggle.addEventListener('change', () => {
     if (c2TapToggle.checked) {
       c2TapLayer.classList.add('on');
-      log('C2: 已开启点击回注（点远端画面上方透明层）');
+      log('C2: 已开启回注（在远端画面上方透明层按下鼠标或手指；须先有视频尺寸）');
     } else {
       c2TapLayer.classList.remove('on');
       log('C2: 已关闭点击回注');
     }
   });
 
-  c2TapLayer.addEventListener('click', async (ev) => {
+  let c2LastPointerTs = 0;
+  c2TapLayer.addEventListener('pointerdown', async (ev) => {
+    if (ev.button !== 0) return;
     ev.preventDefault();
     ev.stopPropagation();
     if (!c2TapToggle.checked) return;
+    const now = Date.now();
+    if (now - c2LastPointerTs < 220) return;
+    c2LastPointerTs = now;
+
     const pt = videoPointFromEvent(ev, remoteVideo);
     if (!pt) {
-      log('C2: 未命中视频画面区域或无视频尺寸（等 canplay 后再点）');
+      log('C2: 未命中画面或无 video 尺寸（等远端 canplay / 有分辨率后再点）');
       return;
     }
     const headers = { 'Content-Type': 'application/json' };

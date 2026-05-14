@@ -78,15 +78,21 @@ function execAdb(args) {
 let adbConnectAttempted = false;
 
 async function ensureAdbTcp() {
-  if (adbConnectAttempted) return;
-  adbConnectAttempted = true;
   const s = adbSerial();
   if (!/^\d+\.\d+\.\d+\.\d+:\d+$/.test(s)) return;
-  try {
-    await execAdb(['connect', s]);
-  } catch (e) {
-    console.warn('Layer C2: adb connect', s, 'failed:', e.message || e);
+  if (!adbConnectAttempted) {
+    adbConnectAttempted = true;
+    try {
+      await execAdb(['connect', s]);
+    } catch (e) {
+      console.warn('Layer C2: adb connect', s, 'failed:', e.message || e);
+    }
   }
+}
+
+/** tap 失败时允许下次再 adb connect（Redroid 重启后常见） */
+function resetAdbConnectFlag() {
+  adbConnectAttempted = false;
 }
 
 function checkToken(req, res) {
@@ -180,6 +186,7 @@ function registerC2Routes(app) {
     try {
       await ensureAdbTcp();
       const out = await execAdb(args);
+      console.log(`Layer C2 tap ok: (${x},${y}) serial=${serial}`);
       res.json({
         ok: true,
         x,
@@ -190,6 +197,7 @@ function registerC2Routes(app) {
         stderr: out.stderr ? String(out.stderr).slice(0, 200) : '',
       });
     } catch (e) {
+      resetAdbConnectFlag();
       console.warn('Layer C2 tap failed:', e.message || e, e.stderr || '');
       res.status(502).json({
         ok: false,
