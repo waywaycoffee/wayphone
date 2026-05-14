@@ -608,6 +608,12 @@ async function main() {
                     console.log(
                       `Layer C1 SFU-to-browser (${phase}): consumer outbound-rtp packetCount=${out.packetCount} byteCount=${ob} bitrate=${out.bitrate}`,
                     );
+                    if (Number(out.packetCount) === 0 && ob === 0 && consumer.transport) {
+                      const tr = consumer.transport;
+                      console.warn(
+                        `Layer C1 recvTransport (${phase}): connectionState=${tr.connectionState}（outbound 为 0：多为浏览器侧 ICE/DTLS 未通；查 MEDIASOUP_ANNOUNCED_IP=${process.env.MEDIASOUP_ANNOUNCED_IP || '(unset)'}、安全组入站 UDP ${RTC_MIN_PORT}-${RTC_MAX_PORT}、本机防火墙）`,
+                      );
+                    }
                     if (ob < 50000 && rtpRx > 1_000_000) {
                       console.warn(
                         'Layer C1: ingest 字节很大但 consumer outbound 很小 — 查 MEDIASOUP_ANNOUNCED_IP（须为浏览器可达的公网 IP）、安全组 UDP 40000–49999、客户端网络是否拦 UDP；可试本机浏览器或 HTTPS+443。',
